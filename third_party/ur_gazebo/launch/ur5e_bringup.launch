@@ -30,6 +30,17 @@
     this setup completely.
   -->
 
+	<!--Added launch arguments -->
+	<arg name="arm_x" default="0.0"/>
+	<arg name="arm_y" default="0.0"/>
+	<arg name="arm_z" default="0.0"/>
+
+	<arg name="arm_roll" default="0.0"/>
+	<arg name="arm_pitch" default="0.0"/>
+	<arg name="arm_yaw" default="0.0"/>
+
+  <arg name="gazebo_world" default="worlds/empty.world" doc="The '.world' file to load in Gazebo." />
+
   <!--Robot description and related parameter files -->
   <arg name="robot_description_file" default="$(dirname)/inc/load_ur5e.launch.xml" doc="Launch file which populates the 'robot_description' parameter."/>
   <arg name="joint_limit_params" default="$(find ur_description)/config/ur5e/joint_limits.yaml"/>
@@ -66,6 +77,14 @@
 
   <!-- Start the 'driver' (ie: Gazebo in this case) -->
   <include file="$(dirname)/inc/ur_control.launch.xml">
+		<arg name="arm_x" value="$(arg arm_x)"/>
+		<arg name="arm_y" value="$(arg arm_y)"/>
+		<arg name="arm_z" value="$(arg arm_z)"/>
+		<arg name="arm_roll" value="$(arg arm_roll)"/>
+		<arg name="arm_pitch" value="$(arg arm_pitch)"/>
+		<arg name="arm_yaw" value="$(arg arm_yaw)"/>
+		<arg name="gazebo_world" value="$(arg gazebo_world)"/>
+
     <arg name="controller_config_file" value="$(arg controller_config_file)"/>
     <arg name="controllers" value="$(arg controllers)"/>
     <arg name="gui" value="$(arg gui)"/>

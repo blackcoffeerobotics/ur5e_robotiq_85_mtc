@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <world name="default">
+
+		<!-- Setup camera initial pose -->
+    <gui>
+			<camera name="gzclient_camera">
+				<pose>1.53 0 2.25 0 0.64 -3.1414</pose>
+			</camera>
+    </gui>
+
+    <!-- A global light source -->
+    <include>
+      <uri>model://sun</uri>
+	    <pose>0 0 0 0 0 0</pose>
+    </include>
+
+    <!-- A ground plane -->
+    <include>
+      <uri>model://ground_plane</uri>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+
+		<!-- Add table -->
+		<include>
+			<uri>model://table</uri>
+			<pose>0.3 0 0 0 0 1.5707</pose>
+		</include>
+
+		<!-- Add coke can -->
+		<include>
+			<uri>model://coke_can</uri>
+			<pose>0.57 0 1.1 0 0 0</pose>
+		</include>
+
+		<!-- keep barebones scene -->
+    <scene>
+      <shadows>0</shadows>
+			<grid>false</grid>
+			<origin_visual>false</origin_visual>
+    </scene>
+
+  </world>
+</sdf>
