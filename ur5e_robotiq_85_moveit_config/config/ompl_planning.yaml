@@ -147,3 +147,37 @@ manipulator:
     - LazyPRMstar
     - SPARS
     - SPARStwo
+  enforce_joint_model_state_space: true
+  # enforce_constrained_state_space: true
+  projection_evaluator: joints(elbow_joint,shoulder_lift_joint,shoulder_pan_joint,wrist_1_joint,wrist_2_joint,wrist_3_joint)
+  longest_valid_segment_fraction: 0.005
+gripper:
+  default_planner_config: RRTConnect
+  planner_configs:
+    - SBL
+    - EST
+    - LBKPIECE
+    - BKPIECE
+    - KPIECE
+    - RRT
+    - RRTConnect
+    - RRTstar
+    - TRRT
+    - PRM
+    - PRMstar
+    - FMT
+    - BFMT
+    - PDST
+    - STRIDE
+    - BiTRRT
+    - LBTRRT
+    - BiEST
+    - ProjEST
+    - LazyPRM
+    - LazyPRMstar
+    - SPARS
+    - SPARStwo
+  enforce_joint_model_state_space: true
+  # enforce_constrained_state_space: true
+  projection_evaluator: joints(left_inner_finger_joint,right_inner_knuckle_joint,finger_joint,right_inner_finger_joint,left_inner_knuckle_joint,right_outer_knuckle_joint)
+  longest_valid_segment_fraction: 0.005

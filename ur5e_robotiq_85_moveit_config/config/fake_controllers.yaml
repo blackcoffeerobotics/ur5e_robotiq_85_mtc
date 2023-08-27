@@ -7,6 +7,9 @@ controller_list:
       - wrist_1_joint
       - wrist_2_joint
       - wrist_3_joint
+  - name: $(arg prefix)fake_gripper_controller
+    joints:
+      - $(arg prefix)finger_joint
 initial:  # Define initial robot poses.
   - group: manipulator
-    pose: home
+    pose: up

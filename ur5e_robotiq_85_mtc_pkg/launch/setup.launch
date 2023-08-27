@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- Configurable Arguments -->
+	<arg name="sim" default="true"/>
+
+	<!-- Launch Gazebo -->
+	<include file="$(find ur_gazebo)/launch/ur5e_bringup.launch"/>
+
+	<!-- Launch MoveIt! -->
+	<include file="$(find ur5e_robotiq_85_moveit_config)/launch/moveit_planning_execution.launch">
+		<arg name="sim" value="$(arg sim)"/>
+	</include>
+
+	<!-- Launch MoveIt! RViz -->
+	<include file="$(find ur5e_robotiq_85_moveit_config)/launch/moveit_rviz.launch"/>
+
+
+</launch>

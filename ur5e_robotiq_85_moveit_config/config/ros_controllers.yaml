@@ -9,3 +9,10 @@ controller_list:
     - wrist_1_joint
     - wrist_2_joint
     - wrist_3_joint
+
+- name: "robotiq_2f_85_gripper_controller"
+  action_ns: gripper_cmd
+  default: True
+  type: GripperCommand
+  joints:
+    - finger_joint
