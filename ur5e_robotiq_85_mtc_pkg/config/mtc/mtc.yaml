@@ -1,0 +1,41 @@
+# Total planning attempts
+max_solutions: 1
+
+# scaling factor
+scaling_factor: 1.0
+
+# Planning timeout
+planning_timeout: 20
+
+# Planning group
+planning_group: manipulator
+
+# Arm parameters
+arm_group_name: manipulator
+hand_group_name: gripper
+eef_name: gripper
+
+# Saved poses
+hand_open_pose: opened
+hand_close_pose: closed
+arm_home_pose: up
+
+# Default hand transform
+grasp_frame_transform: [0.0, 0.0, 0.01, -deg(90), 0.0, -deg(90)]
+
+# Constraint paths
+fixed_constraint_path: config/constraints/constraint_approximations_database_pp_no_scene
+free_constraint_path: config/constraints/constraint_approximations_database_od_no_scene
+
+# Gripper parameters
+gripper_cmd_topic: robotiq_2f_85_gripper_controller/gripper_cmd/goal
+gripper_touch_links:
+  - left_outer_knuckle
+  - left_inner_knuckle
+  - right_outer_knuckle
+  - right_inner_knuckle
+  - left_inner_finger
+  - right_inner_finger
+  - robotiq_arg2f_base_link
+  - left_inner_finger_pad
+  - right_inner_finger_pad

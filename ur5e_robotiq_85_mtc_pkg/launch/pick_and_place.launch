@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- MTC params -->
+	<arg name="mtc_params" default="$(find ur5e_robotiq_85_mtc_pkg)/config/mtc/mtc.yaml"/>
+
+	<!-- Pick and Place params -->
+	<arg name="pick_and_place_params" default="$(find ur5e_robotiq_85_mtc_pkg)/config/mtc/pick_and_place.yaml"/>
+
+  <!-- Run MTC pick and place -->
+  <node name="pick_and_place_node" pkg="ur5e_robotiq_85_mtc_pkg" type="pick_and_place_node" output="screen">
+		<rosparam ns="mtc" command="load" file="$(arg mtc_params)"/>
+		<rosparam ns="pick_and_place" command="load" file="$(arg pick_and_place_params)"/>
+	</node>
+
+</launch>

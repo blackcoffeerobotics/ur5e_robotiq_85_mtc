@@ -12,6 +12,8 @@
 
 	<arg name="gazebo_world" default="pick_and_place.world"/>
 
+	<arg name="rviz_config" default="$(find ur5e_robotiq_85_mtc_pkg)/config/rviz/ur5e_robotiq_85_mtc.rviz"/>
+
 
 	<!-- Launch Gazebo -->
 	<include file="$(find ur_gazebo)/launch/ur5e_bringup.launch">
@@ -30,7 +32,8 @@
 	</include>
 
 	<!-- Launch MoveIt! RViz -->
-	<include file="$(find ur5e_robotiq_85_moveit_config)/launch/moveit_rviz.launch"/>
-
+	<include file="$(find ur5e_robotiq_85_moveit_config)/launch/moveit_rviz.launch">
+		<arg name="config" value="$(arg rviz_config)"/>
+	</include>
 
 </launch>
