@@ -14,7 +14,26 @@ planning_scene_objects:
   - name: table
     link_state: table::link
     dimensions: [1.5, 0.8, 0.03]
-    origin_compensation: [0., 0., 0.98]
+    origin_compensation: [0., 0., 1.0]
 
 # Place offset
 place_offset: [0.0, 0.0, 0.0]
+
+# Offset from the center
+object_center_offset: 0.05
+
+# Approach object range offsets
+approach_object_min_dist: 0.05
+approach_object_max_dist: 0.4
+
+# Valid distance range when lifting an object after pick
+lift_object_min_dist: 0.2
+lift_object_max_dist: 0.4
+
+# Valid distance range when dropping an object
+drop_object_min_dist: 0.05
+drop_object_max_dist: 0.4
+
+# Retreat after place
+retreat_object_min_dist: 0.05
+retreat_object_max_dist: 0.25

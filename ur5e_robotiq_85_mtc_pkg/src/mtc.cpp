@@ -9,6 +9,7 @@
 
 MTCLibrary::MTCLibrary(const ros::NodeHandle& nh) : nh_(nh) {
   loadParameters();
+  initializePlannersAndStages();
 
   // initialize move_group
   move_group_ =
@@ -31,7 +32,7 @@ MTCLibrary::MTCLibrary(const ros::NodeHandle& nh) : nh_(nh) {
 void MTCLibrary::loadParameters() {
   // load Parameters
   ROS_INFO_STREAM(bash_colours.at("green") +
-    "Loading Parameters" + bash_colours.at("reset"));
+    "Loading Parameters for MTCLibrary" + bash_colours.at("reset"));
 
   ros::NodeHandle pnh("~");
   std::string param_ns = "mtc/";
@@ -71,19 +72,107 @@ void MTCLibrary::loadParameters() {
     "", pnh, param_ns + "gripper_cmd_topic", gripper_cmd_topic_);
   errors += !rosparam_shortcuts::get(
     "", pnh, param_ns + "gripper_touch_links", gripper_touch_links_);
+  errors += !rosparam_shortcuts::get(
+    "", pnh, param_ns + "gripper_open_position", gripper_open_position_);
+  errors += !rosparam_shortcuts::get(
+    "", pnh, param_ns + "gripper_closed_position", gripper_closed_position_);
 
   rosparam_shortcuts::shutdownIfError("", errors);
 }
 
-void MTCLibrary::setConstraints(std::string constraint_path) {
+void MTCLibrary::initializePlannersAndStages() {
+  // initialize planners
+  sampling_planner_ =
+    std::make_shared<moveit::task_constructor::solvers::PipelinePlanner>();
+  sampling_planner_->setProperty(
+    "max_velocity_scaling_factor", scaling_factor_);
+  sampling_planner_->setProperty(
+    "max_acceleration_scaling_factor", scaling_factor_);
+  sampling_planner_->setProperty(
+    "goal_joint_tolerance", 1e-5);
+
+  cartesian_planner_ =
+    std::make_shared<moveit::task_constructor::solvers::CartesianPath>();
+  cartesian_planner_->setMaxVelocityScalingFactor(scaling_factor_);
+  cartesian_planner_->setMaxAccelerationScalingFactor(scaling_factor_);
+  cartesian_planner_->setStepSize(.01);
+
+  current_state_ =
+    std::make_unique<moveit::task_constructor::stages::CurrentState>(
+      "current state");
+
+  applicability_filter_ =
+    std::make_unique<moveit::task_constructor::stages::PredicateFilter>(
+      "applicability test", std::move(current_state_));
+}
+
+void MTCLibrary::resetTask(std::string task_name) {
+  // reset the task variable
+  task_.reset();
+  task_.reset(new moveit::task_constructor::Task());
+
+  task_->stages()->setName(task_name);
+  task_->loadRobotModel();
+
+  // Set task properties
+  task_->setProperty("group", arm_group_name_);
+  task_->setProperty("eef", eef_name_);
+  task_->setProperty("hand", hand_group_name_);
+  task_->setProperty("hand_grasping_frame", hand_frame_);
+  task_->setProperty("ik_frame", hand_frame_);
+}
+
+bool MTCLibrary::initTask(std::string task_name) {
+  // initialize the task after appending the stages
+  // Check for failure
+  try {
+    task_->init();
+  } catch (moveit::task_constructor::InitStageException& e) {
+    ROS_ERROR_STREAM("Initialization failed for " << task_name << ": "
+      << e);
+    return false;
+  }
+  return true;
+}
+
+void MTCLibrary::setConstraints(std::string constraint_type) {
   // set constraints
-  ros::param::set("move_group/constraint_approximations_path",
-    constraint_path);
+  if (constraint_type == "fixed") {
+    ros::param::set("move_group/constraint_approximations_path",
+      fixed_constraint_path_);
+  } else if (constraint_type == "free") {
+    ros::param::set("move_group/constraint_approximations_path",
+      free_constraint_path_);
+  } else {
+    ROS_ERROR_STREAM("Constraint type not supported");
+  }
 }
 
 std::string MTCLibrary::getPlanningFrame() {
   // get planning frame
   return planning_frame_;
+}
+
+void MTCLibrary::openGripperAction() {
+  // open gripper
+  ROS_INFO_STREAM(bash_colours.at("green") +
+    "Opening Gripper" + bash_colours.at("reset"));
+  control_msgs::GripperCommandActionGoal gripper_msg;
+  gripper_msg.goal.command.position = gripper_open_position_;
+  gripper_msg.goal.command.max_effort = 100;
+  gripper_pub_.publish(gripper_msg);
+  ros::Duration(1.0).sleep();
+}
+
+void MTCLibrary::closeGripperAction() {
+  // close gripper
+  ROS_INFO_STREAM(bash_colours.at("green") +
+    "Closing Gripper" + bash_colours.at("reset"));
+  control_msgs::GripperCommandActionGoal gripper_msg;
+  gripper_msg.goal.command.position = gripper_closed_position_;
+  gripper_msg.goal.command.max_effort = 100;
+  gripper_pub_.publish(gripper_msg);
+  ros::Duration(1.0).sleep();
 }
 
 void MTCLibrary::spawnObject(
@@ -132,7 +221,7 @@ void MTCLibrary::removeObject(std::string object_name) {
   planning_scene_pub_.publish(planning_scene);
 }
 
-void MTCLibrary::set_gripper_transform(float transform[6]) {
+void MTCLibrary::setGripperTransform(float transform[6]) {
   grasp_frame_transform_.setIdentity();
   grasp_frame_transform_.translation() =
     Eigen::Vector3d(transform[0], transform[1], transform[2]);
@@ -143,7 +232,18 @@ void MTCLibrary::set_gripper_transform(float transform[6]) {
   grasp_frame_transform_.linear() = q.matrix();
 }
 
-bool MTCLibrary::task_plan(bool oneshot) {
+bool MTCLibrary::expectAttached(
+  const moveit::task_constructor::SolutionBase& s,
+    std::string& comment, std::string object, bool state) {
+  if (s.start()->scene()->getCurrentState().hasAttachedBody(object)) {
+    comment = object + " is attached to the gripper";
+    return state;
+  }
+  comment = object + " is not attached to the gripper";
+  return !state;
+}
+
+bool MTCLibrary::taskPlan(bool oneshot) {
   ROS_INFO_STREAM(bash_colours.at("green") +
     "Start searching for task solutions" + bash_colours.at("reset"));
 
@@ -154,7 +254,7 @@ bool MTCLibrary::task_plan(bool oneshot) {
   }
 }
 
-bool MTCLibrary::task_execute() {
+bool MTCLibrary::taskExecute() {
   ROS_INFO_STREAM(bash_colours.at("green") +
     "Executing solution trajectory" + bash_colours.at("reset"));
   moveit_msgs::MoveItErrorCodes execute_result;
@@ -173,16 +273,17 @@ bool MTCLibrary::task_execute() {
   return true;
 }
 
-bool MTCLibrary::try_task(bool execute, bool oneshot) {
+bool MTCLibrary::tryTask(bool execute, bool oneshot) {
   time_t start = time(NULL);
 
   while (time(NULL) - start < planning_timeout_) {
-    if (task_plan(oneshot)) {
+    if (taskPlan(oneshot)) {
       ROS_INFO_STREAM(
-          bash_colours.at("green") + "Planning succeded"+ bash_colours.at("reset"));
+          bash_colours.at("green") +
+            "Planning succeded"+ bash_colours.at("reset"));
 
       if (execute) {
-        if (!task_execute()) {
+        if (!taskExecute()) {
           ROS_ERROR("Execution failed");
           return false;
         }
@@ -198,5 +299,9 @@ bool MTCLibrary::try_task(bool execute, bool oneshot) {
       ROS_ERROR("Planning failed");
     }
   }
+  return false;
+}
+
+bool MTCLibrary::executePipeline() {
   return false;
 }

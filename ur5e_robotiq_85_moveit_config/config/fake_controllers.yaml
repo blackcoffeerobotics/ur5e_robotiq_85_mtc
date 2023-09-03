@@ -12,4 +12,4 @@ controller_list:
       - $(arg prefix)finger_joint
 initial:  # Define initial robot poses.
   - group: manipulator
-    pose: up
+    pose: custom

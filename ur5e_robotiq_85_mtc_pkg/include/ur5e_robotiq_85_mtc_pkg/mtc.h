@@ -51,6 +51,8 @@
 #include <string>
 #include <tuple>
 #include <map>
+#include <memory>
+
 
 const std::map<
   std::string, std::string> bash_colours = {
@@ -78,7 +80,6 @@ class MTCLibrary {
   std::vector<std::string> touch_links_;
   geometry_msgs::Pose object_pose_;
 
-  std::string object_name_;
   std::vector<double> object_dimensions_;
   float default_transform_[6];
 
@@ -104,24 +105,41 @@ class MTCLibrary {
   std::string free_constraint_path_;
 
   std::string gripper_cmd_topic_;
+  double gripper_open_position_;
+  double gripper_closed_position_;
   std::vector<std::string> gripper_touch_links_;
 
+  // Planners
+  moveit::task_constructor::solvers::PipelinePlannerPtr sampling_planner_;
+  moveit::task_constructor::solvers::CartesianPathPtr cartesian_planner_;
+
+  // Pointers to stages
+  moveit::task_constructor::Stage* current_state_ptr_;
+  std::unique_ptr<
+    moveit::task_constructor::stages::CurrentState> current_state_;
+  std::unique_ptr<
+    moveit::task_constructor::stages::PredicateFilter> applicability_filter_;
 
   // Functions
   explicit MTCLibrary(const ros::NodeHandle& nh);
 
-  void set_gripper_transform(float transform[6]);
+  void setGripperTransform(float transform[6]);
 
-  bool task_plan(bool oneshot);
-  bool task_execute();
-  bool try_task(bool execute = true, bool oneshot = false);
-  bool execute_pipeline();
+  bool expectAttached(const moveit::task_constructor::SolutionBase& s,
+    std::string& comment, std::string object, bool state);
+  bool taskPlan(bool oneshot);
+  bool taskExecute();
+  bool tryTask(bool execute = true, bool oneshot = false);
+  virtual bool executePipeline();
 
   void openGripperAction();
   void closeGripperAction();
-  void setConstraints(std::string constraint_path);
+  void setConstraints(std::string constraint_type);
 
-  void loadParameters();
+  virtual void loadParameters();
+  void initializePlannersAndStages();
+  void resetTask(std::string task_name);
+  bool initTask(std::string task_name);
 
   std::string getPlanningFrame();
 

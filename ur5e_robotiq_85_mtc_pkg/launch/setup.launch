@@ -4,7 +4,7 @@
 	<!-- Configurable Arguments -->
 	<arg name="arm_x" default="0.0"/>
 	<arg name="arm_y" default="0.0"/>
-	<arg name="arm_z" default="1.0"/>
+	<arg name="arm_z" default="1.02"/>
 
 	<arg name="arm_roll" default="0.0"/>
 	<arg name="arm_pitch" default="0.0"/>

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<launch>
+
+	<arg name="use_current_scene" default="false"/>
+  <arg name="planning_group" default="arm"/>
+  <arg name="constraints_file" default="$(find kinova_move_it_config)/config/approx_constraint_manifolds_pp_no_scene.yaml"/>
+	<arg name="output_folder" default="$(find kinova_move_it_config)/config/constraint_approximations_database_pp_no_scene"/>
+
+  <node name="generate_state_database" pkg="moveit_planners_ompl" type="generate_state_database" output="screen" ns="my_gen3">
+    <param name="use_current_scene" value="$(arg use_current_scene)"/>
+    <param name="planning_group" value="$(arg planning_group)"/>
+    <param name="output_folder" value="$(arg output_folder)"/>
+
+    <rosparam ns="constraints" command="load" file="$(arg constraints_file)"/>
+  </node>
+
+</launch>

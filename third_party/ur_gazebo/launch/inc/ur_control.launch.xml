@@ -58,6 +58,7 @@
 			-R $(arg arm_roll)
 			-P $(arg arm_pitch)
 			-Y $(arg arm_yaw)
+			-J shoulder_pan_joint -1.5707
 			-J shoulder_lift_joint -1.5707
 			-J wrist_1_joint -1.5707
 			-unpause"

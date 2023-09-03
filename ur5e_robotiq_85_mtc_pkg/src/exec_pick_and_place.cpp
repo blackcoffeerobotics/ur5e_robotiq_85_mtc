@@ -112,6 +112,7 @@ int main(int argc, char** argv) {
   geometry_msgs::Pose object_pose;
   geometry_msgs::Pose place_pose;
   std::string planning_frame;
+  bool success;
 
   // initialize the spawnhelper class
   SpawnHelper sh(nh);
@@ -154,6 +155,17 @@ int main(int argc, char** argv) {
 
   ROS_INFO_STREAM(bash_colours.at("green") +
     "Starting Pick and Place" + bash_colours.at("reset"));
+
+  // execute pipeline
+  success = pp.executePipeline();
+
+  if (success) {
+    ROS_INFO_STREAM(bash_colours.at("green") +
+      "Pick and Place Successful" + bash_colours.at("reset"));
+  } else {
+    ROS_INFO_STREAM(bash_colours.at("red") +
+      "Pick and Place Failed" + bash_colours.at("reset"));
+  }
 
   // Keep introspection alive
   ros::waitForShutdown();

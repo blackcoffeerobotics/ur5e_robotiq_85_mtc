@@ -1,0 +1,9 @@
+name: upright_constraint
+constraints:
+- type: orientation
+  frame_id: world
+  link_name: tool0
+  orientation: [deg(90), 0, deg(90)]
+  tolerances: [0.4, deg(360), 0.4]
+  parameterization: 1
+  weight: 1.0
