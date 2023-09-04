@@ -16,7 +16,6 @@
 	<depend>robotiq_2f_85</depend>
 	<depend>ur_description</depend>
 	<depend>ur_gazebo</depend>
-	<depend>ur_kinematics</depend>
 	<depend>ur5e_robotiq_85_moveit_config</depend>
 
   <depend>gazebo_ros</depend>

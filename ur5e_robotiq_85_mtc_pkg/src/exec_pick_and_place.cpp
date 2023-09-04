@@ -151,6 +151,9 @@ int main(int argc, char** argv) {
 
     // spawn object
     pp.spawnObject(obj_name, obj_pose, obj_dimensions, planning_frame);
+
+    // pause
+    ros::Duration(1.0).sleep();
   }
 
   ROS_INFO_STREAM(bash_colours.at("green") +

@@ -21,7 +21,7 @@ hand_close_pose: closed
 arm_home_pose: up
 
 # Default hand transform
-grasp_frame_transform: [0.0, 0.0, 0.01, -deg(90), 0.0, -deg(90)]
+grasp_frame_transform: [0.0, 0.0, 0.13, deg(90), deg(0), deg(90)]
 
 # Constraint paths
 fixed_constraint_path: config/constraints/constraint_approximations_database_pp_no_scene

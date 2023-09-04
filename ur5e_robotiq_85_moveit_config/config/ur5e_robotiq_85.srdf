@@ -69,6 +69,16 @@
         <joint name="right_outer_knuckle_joint" value="0.8" />
     </group_state>
 
+
+    <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
+    <end_effector name="gripper" parent_link="wrist_3_link" group="gripper" parent_group="manipulator"/>
+    <!--PASSIVE JOINT: Purpose: this element is used to mark joints that are not actuated-->
+    <passive_joint name="left_inner_finger_joint" />
+    <passive_joint name="left_inner_knuckle_joint" />
+    <passive_joint name="right_inner_knuckle_joint" />
+    <passive_joint name="right_outer_knuckle_joint" />
+    <passive_joint name="right_inner_finger_joint" />
+
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
     <virtual_joint name="fixed_base" type="fixed" parent_frame="world" child_link="base_link" />
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->

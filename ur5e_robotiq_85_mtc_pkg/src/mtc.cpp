@@ -9,7 +9,6 @@
 
 MTCLibrary::MTCLibrary(const ros::NodeHandle& nh) : nh_(nh) {
   loadParameters();
-  initializePlannersAndStages();
 
   // initialize move_group
   move_group_ =
@@ -97,13 +96,13 @@ void MTCLibrary::initializePlannersAndStages() {
   cartesian_planner_->setMaxAccelerationScalingFactor(scaling_factor_);
   cartesian_planner_->setStepSize(.01);
 
-  current_state_ =
+  current_state_stage_ =
     std::make_unique<moveit::task_constructor::stages::CurrentState>(
-      "current state");
+      "current state stage");
 
-  applicability_filter_ =
+  applicability_filter_stage_ =
     std::make_unique<moveit::task_constructor::stages::PredicateFilter>(
-      "applicability test", std::move(current_state_));
+      "applicability filter stage", std::move(current_state_stage_));
 }
 
 void MTCLibrary::resetTask(std::string task_name) {
@@ -120,6 +119,9 @@ void MTCLibrary::resetTask(std::string task_name) {
   task_->setProperty("hand", hand_group_name_);
   task_->setProperty("hand_grasping_frame", hand_frame_);
   task_->setProperty("ik_frame", hand_frame_);
+
+  // initialize planners and stages
+  initializePlannersAndStages();
 }
 
 bool MTCLibrary::initTask(std::string task_name) {

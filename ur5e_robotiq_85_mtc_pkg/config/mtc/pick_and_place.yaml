@@ -20,7 +20,7 @@ planning_scene_objects:
 place_offset: [0.0, 0.0, 0.0]
 
 # Offset from the center
-object_center_offset: 0.05
+object_center_offset: 0.0
 
 # Approach object range offsets
 approach_object_min_dist: 0.05

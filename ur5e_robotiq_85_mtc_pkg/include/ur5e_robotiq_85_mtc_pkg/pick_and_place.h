@@ -38,6 +38,7 @@ class PickAndPlace : public MTCLibrary {
 
   void loadParameters() override;
 
+  bool checkTargetPose();
   bool approachObject();
   bool executePipeline() override;
 };

@@ -113,12 +113,14 @@ class MTCLibrary {
   moveit::task_constructor::solvers::PipelinePlannerPtr sampling_planner_;
   moveit::task_constructor::solvers::CartesianPathPtr cartesian_planner_;
 
-  // Pointers to stages
+  // Stages
+  std::unique_ptr<moveit::task_constructor::stages::CurrentState>
+    current_state_stage_;
+  std::unique_ptr<moveit::task_constructor::stages::PredicateFilter>
+    applicability_filter_stage_;
+
+  // Misc
   moveit::task_constructor::Stage* current_state_ptr_;
-  std::unique_ptr<
-    moveit::task_constructor::stages::CurrentState> current_state_;
-  std::unique_ptr<
-    moveit::task_constructor::stages::PredicateFilter> applicability_filter_;
 
   // Functions
   explicit MTCLibrary(const ros::NodeHandle& nh);

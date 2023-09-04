@@ -5,7 +5,7 @@
 
   <!-- The request adapters (plugins) used when planning with OMPL.
        ORDER MATTERS -->
-  <arg name="planning_adapters" value="default_planner_request_adapters/AddTimeParameterization
+  <arg name="planning_adapters" value="default_planner_request_adapters/AddIterativeSplineParameterization
 				       default_planner_request_adapters/FixWorkspaceBounds
 				       default_planner_request_adapters/FixStartStateBounds
 				       default_planner_request_adapters/FixStartStateCollision
@@ -17,6 +17,6 @@
   <param name="request_adapters" value="$(arg planning_adapters)" />
   <param name="start_state_max_bounds_error" value="$(arg start_state_max_bounds_error)" />
 
-  <rosparam command="load" file="$(find ur5e_robotiq_85_moveit_config)/config/ompl_planning.yaml"/>
+  <rosparam command="load" file="$(find ur5e_robotiq_85_moveit_config)/config/ompl_planning.yaml" subst_value="true"/>
 
 </launch>

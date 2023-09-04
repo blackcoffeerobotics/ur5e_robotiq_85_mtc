@@ -10,7 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
   ur5e_robotiq_85_moveit_config
   ur_description
   ur_gazebo
-  ur_kinematics
   robotiq_2f_85
   roboticsgroup_upatras_gazebo_plugins
 )
