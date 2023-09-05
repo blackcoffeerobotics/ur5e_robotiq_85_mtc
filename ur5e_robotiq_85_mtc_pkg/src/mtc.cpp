@@ -162,6 +162,65 @@ void MTCLibrary::initializePlannersAndStages() {
   approach_object_stage_->properties().set("link", hand_frame_);
   approach_object_stage_->properties().configureInitFrom(
     moveit::task_constructor::Stage::PARENT, { "group" });
+
+  lift_object_stage_ =
+    std::make_unique<moveit::task_constructor::stages::MoveRelative>(
+      "lift object", cartesian_planner_);
+  lift_object_stage_->properties().set("marker_ns", "lift_object");
+  lift_object_stage_->properties().set("link", hand_frame_);
+  lift_object_stage_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT, { "group" });
+}
+
+
+void MTCLibrary::modifyGripperTransform(
+  std::string axis_string, double offset) {
+  // get direction and axis from string
+  char sign = axis_string[0];
+  char axis = axis_string[1];
+
+  if (sign == '-') {
+    offset *= -1;
+  }
+
+  if (axis == 'x') {
+    grasp_frame_transform_.translation().x() += offset;
+  } else if (axis == 'y') {
+    grasp_frame_transform_.translation().y() += offset;
+  } else if (axis == 'z') {
+    grasp_frame_transform_.translation().z() += offset;
+  } else {
+    ROS_ERROR_STREAM("Invalid axis_string");
+  }
+}
+
+geometry_msgs::Vector3Stamped MTCLibrary::getVectorDirection(
+  std::string axis_string) {
+  // modify direction based on input string
+  char sign = axis_string[0];
+  char axis = axis_string[1];
+
+  // define default direction
+  float direction = 1.0;
+
+  if (sign == '-') {
+    direction *= -1;
+  }
+
+  // define vector
+  geometry_msgs::Vector3Stamped vec;
+  vec.header.frame_id = hand_frame_;
+
+  if (axis == 'x') {
+    vec.vector.x = direction;
+  } else if (axis == 'y') {
+    vec.vector.y = direction;
+  } else if (axis == 'z') {
+    vec.vector.z = direction;
+  } else {
+    ROS_ERROR_STREAM("Invalid axis_string");
+  }
+  return vec;
 }
 
 void MTCLibrary::resetTask(std::string task_name) {
@@ -281,17 +340,6 @@ void MTCLibrary::removeObject(std::string object_name) {
   planning_scene_pub_.publish(planning_scene);
 }
 
-void MTCLibrary::setGripperTransform(float transform[6]) {
-  grasp_frame_transform_.setIdentity();
-  grasp_frame_transform_.translation() =
-    Eigen::Vector3d(transform[0], transform[1], transform[2]);
-  Eigen::Quaterniond q;
-  q = Eigen::AngleAxisd(transform[3], Eigen::Vector3d::UnitX()) *
-      Eigen::AngleAxisd(transform[4], Eigen::Vector3d::UnitY()) *
-      Eigen::AngleAxisd(transform[5], Eigen::Vector3d::UnitZ());
-  grasp_frame_transform_.linear() = q.matrix();
-}
-
 bool MTCLibrary::expectAttached(
   const moveit::task_constructor::SolutionBase& s,
     std::string& comment, std::string object, bool state) {
@@ -327,7 +375,6 @@ bool MTCLibrary::taskExecute() {
     if (execute_result.val == moveit_msgs::MoveItErrorCodes::PREEMPTED) {
       ROS_ERROR_STREAM("Task execution preempted due to obstacle");
     }
-
     return false;
   }
   return true;

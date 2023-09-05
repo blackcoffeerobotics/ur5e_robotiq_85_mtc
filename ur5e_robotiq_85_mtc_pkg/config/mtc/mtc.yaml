@@ -30,7 +30,7 @@ free_constraint_path: config/constraints/constraint_approximations_database_od_n
 # Gripper parameters
 gripper_cmd_topic: robotiq_2f_85_gripper_controller/gripper_cmd/goal
 gripper_open_position: 0.0
-gripper_closed_position: 0.8
+gripper_closed_position: 0.3
 gripper_touch_links:
   - left_outer_knuckle
   - left_inner_knuckle

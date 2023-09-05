@@ -105,8 +105,9 @@ bool PickAndPlace::checkTargetPose() {
       generate_custom_pose_stage_->setCustomPoses(CustomPoses);
       generate_custom_pose_stage_->setMonitoredStage(current_state_ptr_);
 
-      // Add object_center_offset_ to grasp pose (ensure +ve values)
-      grasp_frame_transform_.translation().y() -= object_center_offset_;
+      // Add object_center_offset
+      modifyGripperTransform(
+        object_center_offset_axis_, object_center_offset_);
 
       // Compute IK - Substage
       auto compute_ik_custom_grasp =
@@ -121,15 +122,14 @@ bool PickAndPlace::checkTargetPose() {
           moveit::task_constructor::Stage::INTERFACE, { "target_pose" });
       serial_container_->insert(std::move(compute_ik_custom_grasp));
 
-      // remove object_pickup_offset_ from grasp pose
-      grasp_frame_transform_.translation().y() += object_center_offset_;
+      // remove object_pickup_offset
+      modifyGripperTransform(
+        object_center_offset_axis_, -object_center_offset_);
     }
     task_->add(std::move(serial_container_));
   }
   return initTask(task_name_ + "_check_target_pose");
 }
-
-
 
 bool PickAndPlace::approachObject() {
   // Task 1 - approach object
@@ -139,31 +139,16 @@ bool PickAndPlace::approachObject() {
   // reset task
   resetTask(task_name_ + "_approach_object");
 
-  const std::string object = object_name_;
-
   // Applicability Stage
-  moveit::task_constructor::Stage* current_state_ptr = nullptr;
+  current_state_ptr_ = nullptr;
   {
-    auto current_state =
-      std::make_unique<moveit::task_constructor::stages::CurrentState>(
-        "current state");
-
-    auto applicability_filter =
-        std::make_unique<moveit::task_constructor::stages::PredicateFilter>(
-          "applicability test", std::move(current_state));
-    applicability_filter->setPredicate([object](
+    applicability_filter_stage_->setPredicate([this](
       const moveit::task_constructor::SolutionBase& s, std::string& comment) {
-      if (s.start()->scene()->getCurrentState().hasAttachedBody(object)) {
-        comment = "object with id '" + object +
-          "' is already attached and cannot be picked";
-        return false;
-      }
-      return true;
+      return expectAttached(s, comment, object_name_, false);
     });
-    current_state_ptr = applicability_filter.get();
-    task_->add(std::move(applicability_filter));
+    current_state_ptr_ = applicability_filter_stage_.get();
+    task_->add(std::move(applicability_filter_stage_));
   }
-
 
   // Open Hand Stage
   {
@@ -183,20 +168,18 @@ bool PickAndPlace::approachObject() {
           approach_object_min_dist_, approach_object_max_dist_);
 
       // Set hand forward direction
-      geometry_msgs::Vector3Stamped vec;
-      vec.header.frame_id = hand_frame_;
-      vec.vector.z = 1.0;
-      approach_object_stage_->setDirection(vec);
+      approach_object_stage_->setDirection(getVectorDirection(approach_axis_));
       serial_container_->insert(std::move(approach_object_stage_));
     }
 
     // Generate grasp pose - Substage
     {
-      generate_grasp_pose_stage_->setObject(object);
-      generate_grasp_pose_stage_->setMonitoredStage(current_state_ptr);
+      generate_grasp_pose_stage_->setObject(object_name_);
+      generate_grasp_pose_stage_->setMonitoredStage(current_state_ptr_);
 
-      // Add object_pickup_offset_ to grasp pose (ensure +ve values)
-      grasp_frame_transform_.translation().y() -= object_center_offset_;
+      // Add object_pickup_offset_
+      modifyGripperTransform(
+        object_center_offset_axis_, object_center_offset_);
 
       // Compute IK - Substage
       auto compute_ik =
@@ -211,22 +194,65 @@ bool PickAndPlace::approachObject() {
           moveit::task_constructor::Stage::INTERFACE, { "target_pose" });
       serial_container_->insert(std::move(compute_ik));
 
-      // remove object_pickup_offset_ from grasp pose
-      grasp_frame_transform_.translation().y() += object_center_offset_;
-    }
-
-    // allow collision - Substage
-    {
-      allow_hand_object_collision_stage_->allowCollisions(
-        object_name_, task_->getRobotModel()->getJointModelGroup(
-          hand_group_name_)->getLinkModelNamesWithCollisionGeometry(), true);
-      serial_container_->insert(std::move(allow_hand_object_collision_stage_));
+      // remove object_pickup_offset
+      modifyGripperTransform(
+        object_center_offset_axis_, -object_center_offset_);
     }
     task_->add(std::move(serial_container_));
   }
-
   return initTask(task_name_ + "_approach_object");
 }
+
+bool PickAndPlace::liftObject() {
+  // Task 2 - lift object
+  ROS_INFO_STREAM(bash_colours.at("green") +
+    "Lift Object Stage" + bash_colours.at("reset"));
+
+  // reset task
+  resetTask(task_name_ + "_lift_object");
+
+  // Applicability Stage
+  current_state_ptr_ = nullptr;
+  {
+    applicability_filter_stage_->setPredicate([this](
+      const moveit::task_constructor::SolutionBase& s, std::string& comment) {
+      return expectAttached(s, comment, object_name_, true);
+    });
+    current_state_ptr_ = applicability_filter_stage_.get();
+    task_->add(std::move(applicability_filter_stage_));
+  }
+
+  // allow collision - Stage
+  {
+    allow_hand_object_collision_stage_->allowCollisions(
+      object_name_, task_->getRobotModel()->getJointModelGroup(
+        hand_group_name_)->getLinkModelNamesWithCollisionGeometry(), true);
+    task_->add(std::move(allow_hand_object_collision_stage_));
+  }
+
+  // Lift object Stage
+  {
+    lift_object_stage_->setMinMaxDistance(
+        lift_object_min_dist_, lift_object_max_dist_);
+
+    // Set hand upward direction
+    lift_object_stage_->setDirection(getVectorDirection(lift_axis_));
+    task_->add(std::move(lift_object_stage_));
+  }
+
+  // Allow collision Stage
+  {
+    auto stage =
+      std::make_unique<moveit::task_constructor::stages::ModifyPlanningScene>(
+        "allow collision (object,surface)");
+    stage->allowCollisions({ object_name_ }, { "table" }, true);
+    task_->add(std::move(stage));
+  }
+
+
+  return initTask(task_name_ + "_lift_object");
+}
+
 
 bool PickAndPlace::executePipeline() {
   // pick with an open grasp
@@ -234,21 +260,44 @@ bool PickAndPlace::executePipeline() {
 
   // check stage sanity of target pose
   if (!checkTargetPose()) {
+    removeObject(object_name_);
     return false;
   }
 
   if (!tryTask(false, true)) {
+    removeObject(object_name_);
     ROS_ERROR_STREAM("Arm cannot reach target pose");
     return false;
   }
 
   // check stage sanity of approach object
   if (!approachObject()) {
+    removeObject(object_name_);
     return false;
   }
 
   if (!tryTask()) {
+    removeObject(object_name_);
     ROS_ERROR_STREAM("Arm cannot approach object");
+    return false;
+  }
+
+  // pick with a closed grasp
+  closeGripperAction();
+  // attach object to gripper
+  move_group_->attachObject(object_name_, hand_frame_, gripper_touch_links_);
+
+  // check stage sanity of lift object
+  if (!liftObject()) {
+    removeObject(object_name_);
+    move_group_->detachObject(object_name_);
+    return false;
+  }
+
+  if (!tryTask()) {
+    removeObject(object_name_);
+    move_group_->detachObject(object_name_);
+    ROS_ERROR_STREAM("Arm cannot lift object");
     return false;
   }
 

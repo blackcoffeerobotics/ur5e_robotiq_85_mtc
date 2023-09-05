@@ -77,7 +77,6 @@ class MTCLibrary {
   std::string task_name_;
   std::string planning_frame_, hand_frame_;
 
-  std::vector<std::string> touch_links_;
   geometry_msgs::Pose object_pose_;
 
   std::vector<double> object_dimensions_;
@@ -133,6 +132,8 @@ class MTCLibrary {
 
   std::unique_ptr<moveit::task_constructor::stages::MoveRelative>
     approach_object_stage_;
+  std::unique_ptr<moveit::task_constructor::stages::MoveRelative>
+    lift_object_stage_;
 
   // Misc
   moveit::task_constructor::Stage* current_state_ptr_;
@@ -142,8 +143,6 @@ class MTCLibrary {
 
   // Functions
   explicit MTCLibrary(const ros::NodeHandle& nh);
-
-  void setGripperTransform(float transform[6]);
 
   bool expectAttached(const moveit::task_constructor::SolutionBase& s,
     std::string& comment, std::string object, bool state);
@@ -155,6 +154,8 @@ class MTCLibrary {
   void openGripperAction();
   void closeGripperAction();
   void setConstraints(std::string constraint_type);
+  void modifyGripperTransform(std::string axis_string, double offset);
+  geometry_msgs::Vector3Stamped getVectorDirection(std::string axis_string);
 
   virtual void loadParameters();
   void initializePlannersAndStages();
