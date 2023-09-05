@@ -24,24 +24,38 @@ void PickAndPlace::loadParameters() {
   std::string param_ns = "pick_and_place/";
   std::size_t errors = 0;
 
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "object_center_offset", object_center_offset_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "approach_object_min_dist", approach_object_min_dist_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "approach_object_max_dist", approach_object_max_dist_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "lift_object_min_dist", lift_object_min_dist_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "lift_object_max_dist", lift_object_max_dist_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "drop_object_min_dist", drop_object_min_dist_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "drop_object_max_dist", drop_object_max_dist_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "retreat_object_min_dist", retreat_object_min_dist_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "retreat_object_max_dist", retreat_object_max_dist_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "object_center_offset", object_center_offset_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "object_center_offset_axis", object_center_offset_axis_);
+
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "approach_object_min_dist", approach_object_min_dist_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "approach_object_max_dist", approach_object_max_dist_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "approach_axis", approach_axis_);
+
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "lift_object_min_dist", lift_object_min_dist_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "lift_object_max_dist", lift_object_max_dist_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "lift_axis", lift_axis_);
+
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "drop_object_min_dist", drop_object_min_dist_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "drop_object_max_dist", drop_object_max_dist_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "drop_axis", drop_axis_);
+
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "retreat_object_min_dist", retreat_object_min_dist_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "retreat_object_max_dist", retreat_object_max_dist_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "retreat_axis", retreat_axis_);
 
   rosparam_shortcuts::shutdownIfError("", errors);
 }
@@ -68,50 +82,13 @@ bool PickAndPlace::checkTargetPose() {
     task_->add(std::move(applicability_filter_stage_));
   }
 
-  // Open Hand Stage
+  // Connect Stage - custom grasp
   {
-    auto stage =
-      std::make_unique<moveit::task_constructor::stages::MoveTo>(
-        "open hand", sampling_planner_);
-    stage->setGroup(hand_group_name_);
-    stage->setGoal(hand_open_pose_);
-    task_->add(std::move(stage));
-  }
-
-  // Allow collision for gripper and object
-  {
-    auto stage =
-      std::make_unique<
-        moveit::task_constructor::stages::ModifyPlanningScene>(
-        "allow collision (hand,object)");
-    stage->allowCollisions(object_name_,
-      *task_->getRobotModel()->getJointModelGroup(hand_group_name_), true);
-    task_->add(std::move(stage));
-  }
-
-  // Move to Pick Connect Stage - non cartesian
-  {
-    auto stage = std::make_unique<moveit::task_constructor::stages::Connect>(
-      "connect to pick",
-        moveit::task_constructor::stages::Connect::GroupPlannerVector{
-          { arm_group_name_, sampling_planner_ } });
-    stage->setTimeout(60.0);
-    stage->properties().configureInitFrom(
-      moveit::task_constructor::Stage::PARENT);
-    task_->add(std::move(stage));
+    task_->add(std::move(connect_stage_for_custom_grasp_));
   }
 
   // Serial Container to Connect
   {
-    auto grasp =
-      std::make_unique<moveit::task_constructor::SerialContainer>(
-        "pick object");
-    task_->properties().exposeTo(grasp->properties(),
-      { "eef", "hand", "group", "ik_frame" });
-    grasp->properties().configureInitFrom(
-      moveit::task_constructor::Stage::PARENT,
-        { "eef", "hand", "group", "ik_frame" });
-
     // SubStages
     {
       std::vector<geometry_msgs::PoseStamped> CustomPoses;
@@ -124,34 +101,30 @@ bool PickAndPlace::checkTargetPose() {
       p.pose.orientation = tf2::toMsg(q);
       CustomPoses.push_back(p);
 
-      auto stage =
-        std::make_unique<moveit::task_constructor::stages::GenerateCustomPose>(
-          "generate custom grasp pose");
-      stage->setCustomPoses(CustomPoses);
-      stage->properties().configureInitFrom(
-          moveit::task_constructor::Stage::PARENT);
-      stage->setMonitoredStage(current_state_ptr_);
+      // Custom grasp pose - Substage
+      generate_custom_pose_stage_->setCustomPoses(CustomPoses);
+      generate_custom_pose_stage_->setMonitoredStage(current_state_ptr_);
 
       // Add object_center_offset_ to grasp pose (ensure +ve values)
       grasp_frame_transform_.translation().y() -= object_center_offset_;
 
-      // Compute IK - substage
-      auto wrapper =
+      // Compute IK - Substage
+      auto compute_ik_custom_grasp =
         std::make_unique<moveit::task_constructor::stages::ComputeIK>(
-          "grasp pose IK", std::move(stage));
-      wrapper->setMaxIKSolutions(20);
-      wrapper->setMinSolutionDistance(1.0);
-      wrapper->setIKFrame(grasp_frame_transform_, hand_frame_);
-      wrapper->properties().configureInitFrom(
+          "grasp custom pose IK", std::move(generate_custom_pose_stage_));
+      compute_ik_custom_grasp->setMaxIKSolutions(1);
+      compute_ik_custom_grasp->setMinSolutionDistance(1.0);
+      compute_ik_custom_grasp->setIKFrame(grasp_frame_transform_, hand_frame_);
+      compute_ik_custom_grasp->properties().configureInitFrom(
           moveit::task_constructor::Stage::PARENT, { "eef", "group" });
-      wrapper->properties().configureInitFrom(
+      compute_ik_custom_grasp->properties().configureInitFrom(
           moveit::task_constructor::Stage::INTERFACE, { "target_pose" });
-      grasp->insert(std::move(wrapper));
+      serial_container_->insert(std::move(compute_ik_custom_grasp));
 
-      // remove object_center_offset_ from grasp pose
+      // remove object_pickup_offset_ from grasp pose
       grasp_frame_transform_.translation().y() += object_center_offset_;
     }
-    task_->add(std::move(grasp));
+    task_->add(std::move(serial_container_));
   }
   return initTask(task_name_ + "_check_target_pose");
 }
@@ -160,18 +133,96 @@ bool PickAndPlace::checkTargetPose() {
 
 bool PickAndPlace::approachObject() {
   // Task 1 - approach object
+  ROS_INFO_STREAM(bash_colours.at("green") +
+    "Approach Object Stage" + bash_colours.at("reset"));
+
   // reset task
   resetTask(task_name_ + "_approach_object");
 
+  const std::string object = object_name_;
+
   // Applicability Stage
-  current_state_ptr_ = nullptr;
+  moveit::task_constructor::Stage* current_state_ptr = nullptr;
   {
-    applicability_filter_stage_->setPredicate([this](
+    auto current_state =
+      std::make_unique<moveit::task_constructor::stages::CurrentState>(
+        "current state");
+
+    auto applicability_filter =
+        std::make_unique<moveit::task_constructor::stages::PredicateFilter>(
+          "applicability test", std::move(current_state));
+    applicability_filter->setPredicate([object](
       const moveit::task_constructor::SolutionBase& s, std::string& comment) {
-      return expectAttached(s, comment, object_name_, false);
+      if (s.start()->scene()->getCurrentState().hasAttachedBody(object)) {
+        comment = "object with id '" + object +
+          "' is already attached and cannot be picked";
+        return false;
+      }
+      return true;
     });
-    current_state_ptr_ = applicability_filter_stage_.get();
-    task_->add(std::move(applicability_filter_stage_));
+    current_state_ptr = applicability_filter.get();
+    task_->add(std::move(applicability_filter));
+  }
+
+
+  // Open Hand Stage
+  {
+    task_->add(std::move(open_hand_stage_));
+  }
+
+  // Connect Stage
+  {
+    task_->add(std::move(connect_stage_for_grasp_));
+  }
+
+  // Serial Container
+  {
+    // Approach object - Substage
+    {
+      approach_object_stage_->setMinMaxDistance(
+          approach_object_min_dist_, approach_object_max_dist_);
+
+      // Set hand forward direction
+      geometry_msgs::Vector3Stamped vec;
+      vec.header.frame_id = hand_frame_;
+      vec.vector.z = 1.0;
+      approach_object_stage_->setDirection(vec);
+      serial_container_->insert(std::move(approach_object_stage_));
+    }
+
+    // Generate grasp pose - Substage
+    {
+      generate_grasp_pose_stage_->setObject(object);
+      generate_grasp_pose_stage_->setMonitoredStage(current_state_ptr);
+
+      // Add object_pickup_offset_ to grasp pose (ensure +ve values)
+      grasp_frame_transform_.translation().y() -= object_center_offset_;
+
+      // Compute IK - Substage
+      auto compute_ik =
+        std::make_unique<moveit::task_constructor::stages::ComputeIK>(
+          "grasp pose IK", std::move(generate_grasp_pose_stage_));
+      compute_ik->setMaxIKSolutions(20);
+      compute_ik->setMinSolutionDistance(1.0);
+      compute_ik->setIKFrame(grasp_frame_transform_, hand_frame_);
+      compute_ik->properties().configureInitFrom(
+          moveit::task_constructor::Stage::PARENT, { "eef", "group" });
+      compute_ik->properties().configureInitFrom(
+          moveit::task_constructor::Stage::INTERFACE, { "target_pose" });
+      serial_container_->insert(std::move(compute_ik));
+
+      // remove object_pickup_offset_ from grasp pose
+      grasp_frame_transform_.translation().y() += object_center_offset_;
+    }
+
+    // allow collision - Substage
+    {
+      allow_hand_object_collision_stage_->allowCollisions(
+        object_name_, task_->getRobotModel()->getJointModelGroup(
+          hand_group_name_)->getLinkModelNamesWithCollisionGeometry(), true);
+      serial_container_->insert(std::move(allow_hand_object_collision_stage_));
+    }
+    task_->add(std::move(serial_container_));
   }
 
   return initTask(task_name_ + "_approach_object");
@@ -180,7 +231,6 @@ bool PickAndPlace::approachObject() {
 bool PickAndPlace::executePipeline() {
   // pick with an open grasp
   openGripperAction();
-  ros::Duration(1.0).sleep();
 
   // check stage sanity of target pose
   if (!checkTargetPose()) {

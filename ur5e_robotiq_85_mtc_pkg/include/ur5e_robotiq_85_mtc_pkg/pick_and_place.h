@@ -22,14 +22,23 @@ class PickAndPlace : public MTCLibrary {
 
   // Task specific parameters
   double object_center_offset_;
+  std::string object_center_offset_axis_;
+
   double approach_object_min_dist_;
   double approach_object_max_dist_;
+  std::string approach_axis_;
+
   double lift_object_min_dist_;
   double lift_object_max_dist_;
+  std::string lift_axis_;
+
   double drop_object_min_dist_;
   double drop_object_max_dist_;
+  std::string drop_axis_;
+
   double retreat_object_min_dist_;
   double retreat_object_max_dist_;
+  std::string retreat_axis_;
 
  public:
   PickAndPlace(const std::string& task_name,

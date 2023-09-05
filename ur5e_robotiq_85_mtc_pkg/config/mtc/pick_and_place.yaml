@@ -21,19 +21,24 @@ place_offset: [0.0, 0.0, 0.0]
 
 # Offset from the center
 object_center_offset: 0.0
+object_center_offset_axis: y-axis
 
 # Approach object range offsets
 approach_object_min_dist: 0.05
 approach_object_max_dist: 0.4
+approach_axis: z-axis
 
 # Valid distance range when lifting an object after pick
 lift_object_min_dist: 0.2
 lift_object_max_dist: 0.4
+lift_axis: x-axis
 
 # Valid distance range when dropping an object
 drop_object_min_dist: 0.05
 drop_object_max_dist: 0.4
+drop_axis: x-axis
 
 # Retreat after place
 retreat_object_min_dist: 0.05
 retreat_object_max_dist: 0.25
+retreat_axis: z-axis

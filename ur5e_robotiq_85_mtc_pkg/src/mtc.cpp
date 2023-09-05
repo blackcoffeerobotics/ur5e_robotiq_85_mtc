@@ -103,6 +103,65 @@ void MTCLibrary::initializePlannersAndStages() {
   applicability_filter_stage_ =
     std::make_unique<moveit::task_constructor::stages::PredicateFilter>(
       "applicability filter stage", std::move(current_state_stage_));
+
+  open_hand_stage_ =
+    std::make_unique<moveit::task_constructor::stages::MoveTo>(
+      "open hand stage", sampling_planner_);
+  open_hand_stage_->setGroup(hand_group_name_);
+  open_hand_stage_->setGoal(hand_open_pose_);
+
+  allow_hand_object_collision_stage_ =
+    std::make_unique<moveit::task_constructor::stages::ModifyPlanningScene>(
+      "allow hand object collision stage");
+
+  connect_stage_for_custom_grasp_ =
+    std::make_unique<moveit::task_constructor::stages::Connect>(
+      "connect to custom grasp",
+        moveit::task_constructor::stages::Connect::GroupPlannerVector{
+          { arm_group_name_, sampling_planner_ },
+            { hand_group_name_, sampling_planner_ } });
+  connect_stage_for_custom_grasp_->properties().configureInitFrom(
+      moveit::task_constructor::Stage::PARENT);
+
+  connect_stage_for_grasp_ =
+    std::make_unique<moveit::task_constructor::stages::Connect>(
+      "connect to grasp",
+        moveit::task_constructor::stages::Connect::GroupPlannerVector{
+          { arm_group_name_, sampling_planner_ } });
+  connect_stage_for_grasp_->properties().configureInitFrom(
+      moveit::task_constructor::Stage::PARENT);
+
+  serial_container_ =
+      std::make_unique<moveit::task_constructor::SerialContainer>(
+        "serial container for picking");
+  task_->properties().exposeTo(serial_container_->properties(),
+    { "eef", "hand", "group", "ik_frame" });
+  serial_container_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT,
+      { "eef", "hand", "group", "ik_frame" });
+
+  generate_custom_pose_stage_ =
+    std::make_unique<moveit::task_constructor::stages::GenerateCustomPose>(
+      "generate custom grasp pose");
+  generate_custom_pose_stage_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT);
+
+  generate_grasp_pose_stage_ =
+    std::make_unique<moveit::task_constructor::stages::GenerateGraspPose>(
+      "generate grasp pose");
+  generate_grasp_pose_stage_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT);
+  generate_grasp_pose_stage_->properties().set("marker_ns", "grasp_pose");
+  generate_grasp_pose_stage_->setPreGraspPose(hand_open_pose_);
+  generate_grasp_pose_stage_->setAngleDelta(M_PI / 12);
+
+  approach_object_stage_ =
+    std::make_unique<moveit::task_constructor::stages::MoveRelative>(
+      "approach object", cartesian_planner_);
+  approach_object_stage_->properties().set("marker_ns", "approach_object");
+  approach_object_stage_->properties().set("link", hand_frame_);
+  approach_object_stage_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT, { "group" });
 }
 
 void MTCLibrary::resetTask(std::string task_name) {
@@ -184,7 +243,6 @@ void MTCLibrary::spawnObject(
   moveit_msgs::CollisionObject object;
   object.id = object_name;
   object.header.frame_id = reference_frame;
-  object.pose.orientation.w = 1.0;
   object.primitives.resize(1);
 
   int dim_size = object_dimensions.size();
@@ -207,7 +265,7 @@ void MTCLibrary::spawnObject(
   planning_scene.is_diff = true;
   planning_scene_pub_.publish(planning_scene);
 
-  ros::Duration(1.0).sleep();
+  ros::Duration(0.1).sleep();
 }
 
 void MTCLibrary::removeObject(std::string object_name) {
