@@ -23,10 +23,6 @@ arm_home_pose: custom
 # Default hand transform
 grasp_frame_transform: [0.0, 0.0, 0.13, deg(90), deg(0), deg(90)]
 
-# Constraint paths
-fixed_constraint_path: config/constraints/upright_constraint_db
-free_constraint_path: config/constraints/free_constraint_db
-
 # Gripper parameters
 gripper_cmd_topic: robotiq_2f_85_gripper_controller/gripper_cmd/goal
 gripper_open_position: 0.0

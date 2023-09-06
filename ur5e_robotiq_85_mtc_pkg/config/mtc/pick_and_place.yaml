@@ -2,12 +2,12 @@
 base_link_state: robot::base_link
 
 # Target object to pick
-object_name: coke_can
+object_name: beer
 
 # Objects to spawn in the scene
 planning_scene_objects:
-  - name: coke_can
-    link_state: coke_can::link
+  - name: beer
+    link_state: beer::link
     dimensions: [0.16, 0.035]
     origin_compensation: [0., 0., 0.001]
 
@@ -17,7 +17,7 @@ planning_scene_objects:
     origin_compensation: [0., 0., 1.0]
 
 # Place offset
-place_offset: [0.0, 0.0, 0.0]
+place_offset: [0.1, 0.1, 0.0]
 
 # Orientation RPY constraint
 orientation_constraint_name: upright_constraint
