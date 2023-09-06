@@ -18,7 +18,7 @@ eef_name: gripper
 # Saved poses
 hand_open_pose: opened
 hand_close_pose: closed
-arm_home_pose: up
+arm_home_pose: custom
 
 # Default hand transform
 grasp_frame_transform: [0.0, 0.0, 0.13, deg(90), deg(0), deg(90)]

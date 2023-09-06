@@ -10,6 +10,7 @@
 // Import from base class
 #include <ur5e_robotiq_85_mtc_pkg/mtc.h>
 #include <string>
+#include <vector>
 
 
 class PickAndPlace : public MTCLibrary {
@@ -19,8 +20,12 @@ class PickAndPlace : public MTCLibrary {
   std::string object_name_;
   geometry_msgs::Pose object_pose_;
   geometry_msgs::Pose place_pose_;
+  moveit_msgs::Constraints upright_constraint_;
 
   // Task specific parameters
+  std::string orientation_constraint_name_;
+  std::vector<double> orientation_rpy_tolerances_;
+
   double object_center_offset_;
   std::string object_center_offset_axis_;
 
@@ -46,10 +51,12 @@ class PickAndPlace : public MTCLibrary {
       geometry_msgs::Pose object_pose, geometry_msgs::Pose place_pose);
 
   void loadParameters() override;
+  void loadConstraints();
 
   bool checkTargetPose();
   bool approachObject();
-  bool liftObject();
+  bool liftAndPlaceObject();
+  bool retreatAndHome();
   bool executePipeline() override;
 };
 

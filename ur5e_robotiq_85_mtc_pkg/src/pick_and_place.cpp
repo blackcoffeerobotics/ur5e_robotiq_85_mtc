@@ -13,6 +13,8 @@ PickAndPlace::PickAndPlace(const std::string& task_name,
           object_pose_(object_pose), place_pose_(place_pose) {
   // Load Parameters
   loadParameters();
+  // load Constraints
+  loadConstraints();
 }
 
 void PickAndPlace::loadParameters() {
@@ -23,6 +25,11 @@ void PickAndPlace::loadParameters() {
   ros::NodeHandle pnh("~");
   std::string param_ns = "pick_and_place/";
   std::size_t errors = 0;
+
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "orientation_constraint_name", orientation_constraint_name_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "orientation_rpy_tolerances", orientation_rpy_tolerances_);
 
   errors += !rosparam_shortcuts::get("", pnh, param_ns +
     "object_center_offset", object_center_offset_);
@@ -60,6 +67,28 @@ void PickAndPlace::loadParameters() {
   rosparam_shortcuts::shutdownIfError("", errors);
 }
 
+void PickAndPlace::loadConstraints() {
+  // load constraints
+  upright_constraint_.name = orientation_constraint_name_;
+  upright_constraint_.orientation_constraints.resize(1);
+  upright_constraint_.orientation_constraints[
+    0].link_name = hand_frame_;
+  upright_constraint_.orientation_constraints[
+    0].header.frame_id = planning_frame_;
+  upright_constraint_.orientation_constraints[
+    0].absolute_x_axis_tolerance = orientation_rpy_tolerances_[0];
+  upright_constraint_.orientation_constraints[
+    0].absolute_y_axis_tolerance = orientation_rpy_tolerances_[1];
+  upright_constraint_.orientation_constraints[
+    0].absolute_z_axis_tolerance = orientation_rpy_tolerances_[2];
+  upright_constraint_.orientation_constraints[
+    0].parameterization =
+    moveit_msgs::OrientationConstraint::ROTATION_VECTOR;
+  upright_constraint_.orientation_constraints[
+    0].weight = 1.0;
+}
+
+
 bool PickAndPlace::checkTargetPose() {
   // Task 0 - check target pose
   ROS_INFO_STREAM(bash_colours.at("green") +
@@ -82,12 +111,12 @@ bool PickAndPlace::checkTargetPose() {
     task_->add(std::move(applicability_filter_stage_));
   }
 
-  // Connect Stage - custom grasp
+  // Connect Stage - Custom Grasp
   {
     task_->add(std::move(connect_stage_for_custom_grasp_));
   }
 
-  // Serial Container to Connect
+  // Serial Container - Pick
   {
     // SubStages
     {
@@ -120,13 +149,13 @@ bool PickAndPlace::checkTargetPose() {
           moveit::task_constructor::Stage::PARENT, { "eef", "group" });
       compute_ik_custom_grasp->properties().configureInitFrom(
           moveit::task_constructor::Stage::INTERFACE, { "target_pose" });
-      serial_container_->insert(std::move(compute_ik_custom_grasp));
+      serial_container_for_pick_->insert(std::move(compute_ik_custom_grasp));
 
       // remove object_pickup_offset
       modifyGripperTransform(
         object_center_offset_axis_, -object_center_offset_);
     }
-    task_->add(std::move(serial_container_));
+    task_->add(std::move(serial_container_for_pick_));
   }
   return initTask(task_name_ + "_check_target_pose");
 }
@@ -155,12 +184,12 @@ bool PickAndPlace::approachObject() {
     task_->add(std::move(open_hand_stage_));
   }
 
-  // Connect Stage
+  // Connect Stage - Normal Grasp
   {
     task_->add(std::move(connect_stage_for_grasp_));
   }
 
-  // Serial Container
+  // Serial Container - Pick
   {
     // Approach object - Substage
     {
@@ -169,7 +198,7 @@ bool PickAndPlace::approachObject() {
 
       // Set hand forward direction
       approach_object_stage_->setDirection(getVectorDirection(approach_axis_));
-      serial_container_->insert(std::move(approach_object_stage_));
+      serial_container_for_pick_->insert(std::move(approach_object_stage_));
     }
 
     // Generate grasp pose - Substage
@@ -192,24 +221,24 @@ bool PickAndPlace::approachObject() {
           moveit::task_constructor::Stage::PARENT, { "eef", "group" });
       compute_ik->properties().configureInitFrom(
           moveit::task_constructor::Stage::INTERFACE, { "target_pose" });
-      serial_container_->insert(std::move(compute_ik));
+      serial_container_for_pick_->insert(std::move(compute_ik));
 
       // remove object_pickup_offset
       modifyGripperTransform(
         object_center_offset_axis_, -object_center_offset_);
     }
-    task_->add(std::move(serial_container_));
+    task_->add(std::move(serial_container_for_pick_));
   }
   return initTask(task_name_ + "_approach_object");
 }
 
-bool PickAndPlace::liftObject() {
+bool PickAndPlace::liftAndPlaceObject() {
   // Task 2 - lift object
   ROS_INFO_STREAM(bash_colours.at("green") +
-    "Lift Object Stage" + bash_colours.at("reset"));
+    "Lift And Place Object Stage" + bash_colours.at("reset"));
 
   // reset task
-  resetTask(task_name_ + "_lift_object");
+  resetTask(task_name_ + "_lift_and_place_object");
 
   // Applicability Stage
   current_state_ptr_ = nullptr;
@@ -222,7 +251,7 @@ bool PickAndPlace::liftObject() {
     task_->add(std::move(applicability_filter_stage_));
   }
 
-  // allow collision - Stage
+  // Allow Collision - Stage
   {
     allow_hand_object_collision_stage_->allowCollisions(
       object_name_, task_->getRobotModel()->getJointModelGroup(
@@ -230,7 +259,7 @@ bool PickAndPlace::liftObject() {
     task_->add(std::move(allow_hand_object_collision_stage_));
   }
 
-  // Lift object Stage
+  // Lift Object Stage
   {
     lift_object_stage_->setMinMaxDistance(
         lift_object_min_dist_, lift_object_max_dist_);
@@ -240,17 +269,123 @@ bool PickAndPlace::liftObject() {
     task_->add(std::move(lift_object_stage_));
   }
 
-  // Allow collision Stage
+  // Connect Stage - Place
   {
-    auto stage =
-      std::make_unique<moveit::task_constructor::stages::ModifyPlanningScene>(
-        "allow collision (object,surface)");
-    stage->allowCollisions({ object_name_ }, { "table" }, true);
-    task_->add(std::move(stage));
+    upright_constraint_.orientation_constraints[0].orientation =
+      move_group_->getCurrentPose().pose.orientation;
+
+    connect_stage_for_place_->setPathConstraints(upright_constraint_);
+    task_->add(std::move(connect_stage_for_place_));
   }
 
+  // Serial Container - Place
+  {
+    // Drop Object - Substage
+    {
+      drop_object_stage_->setMinMaxDistance(
+          drop_object_min_dist_, drop_object_max_dist_);
 
-  return initTask(task_name_ + "_lift_object");
+      // Set hand downward direction
+      drop_object_stage_->setDirection(getVectorDirection(drop_axis_));
+      serial_container_for_place_->insert(std::move(drop_object_stage_));
+    }
+
+    // Generate Place Pose - Substage
+    {
+      // set object name
+      generate_place_pose_stage_->setObject(object_name_);
+
+      // Set target pose
+      geometry_msgs::PoseStamped p;
+      p.header.frame_id = planning_frame_;
+      p.pose = place_pose_;
+
+      // netural orientation
+      tf2::Quaternion q;
+      q.setRPY(0.0, 0.0, 0.0);
+      p.pose.orientation = tf2::toMsg(q);
+      generate_place_pose_stage_->setPose(p);
+      generate_place_pose_stage_->setMonitoredStage(current_state_ptr_);
+
+      // Add object_center_offset_ to grasp pose
+      modifyGripperTransform(
+        object_center_offset_axis_, object_center_offset_);
+
+      // Compute IK - Substage
+      auto wrapper =
+        std::make_unique<moveit::task_constructor::stages::ComputeIK>(
+          "place pose IK", std::move(generate_place_pose_stage_));
+      wrapper->setMaxIKSolutions(5);
+      wrapper->setIKFrame(grasp_frame_transform_, hand_frame_);
+      wrapper->properties().configureInitFrom(
+        moveit::task_constructor::Stage::PARENT, { "eef", "group" });
+      wrapper->properties().configureInitFrom(
+        moveit::task_constructor::Stage::INTERFACE, { "target_pose" });
+      serial_container_for_place_->insert(std::move(wrapper));
+
+      // remove object_center_offset_ from grasp pose
+      modifyGripperTransform(
+        object_center_offset_axis_, -object_center_offset_);
+    }
+
+    // Open Hand - Substage
+    {
+      serial_container_for_place_->insert(std::move(open_hand_stage_));
+    }
+
+    // Forbid collision - Substage
+    {
+      forbid_hand_object_collision_stage_->allowCollisions(object_name_,
+        *task_->getRobotModel()->getJointModelGroup(hand_group_name_), false);
+      serial_container_for_place_->insert(
+        std::move(forbid_hand_object_collision_stage_));
+    }
+
+    // Detach Object - Substage
+    {
+      detach_object_stage_->detachObject(object_name_, hand_frame_);
+      serial_container_for_place_->insert(std::move(detach_object_stage_));
+    }
+    task_->add(std::move(serial_container_for_place_));
+  }
+  return initTask(task_name_ + "_lift_and_place_object");
+}
+
+bool PickAndPlace::retreatAndHome() {
+  // Task 3 - retreat and home
+  ROS_INFO_STREAM(bash_colours.at("green") +
+    "Retreat And Home Stage" + bash_colours.at("reset"));
+
+  // reset task
+  resetTask(task_name_ + "_retreat_and_home");
+
+  // Applicability Stage
+  current_state_ptr_ = nullptr;
+  {
+    applicability_filter_stage_->setPredicate([this](
+      const moveit::task_constructor::SolutionBase& s, std::string& comment) {
+      return expectAttached(s, comment, object_name_, false);
+    });
+    current_state_ptr_ = applicability_filter_stage_.get();
+    task_->add(std::move(applicability_filter_stage_));
+  }
+
+  // Retreat Object Stage
+  {
+    retreat_object_stage_->setMinMaxDistance(
+        retreat_object_min_dist_, retreat_object_max_dist_);
+
+    // Set hand backward direction
+    retreat_object_stage_->setDirection(getVectorDirection(retreat_axis_));
+    task_->add(std::move(retreat_object_stage_));
+  }
+
+  // Go to Home
+  {
+    task_->add(std::move(move_to_home_stage_));
+  }
+
+  return initTask(task_name_ + "_retreat_and_home");
 }
 
 
@@ -288,7 +423,7 @@ bool PickAndPlace::executePipeline() {
   move_group_->attachObject(object_name_, hand_frame_, gripper_touch_links_);
 
   // check stage sanity of lift object
-  if (!liftObject()) {
+  if (!liftAndPlaceObject()) {
     removeObject(object_name_);
     move_group_->detachObject(object_name_);
     return false;
@@ -297,7 +432,22 @@ bool PickAndPlace::executePipeline() {
   if (!tryTask()) {
     removeObject(object_name_);
     move_group_->detachObject(object_name_);
-    ROS_ERROR_STREAM("Arm cannot lift object");
+    ROS_ERROR_STREAM("Arm cannot lift and place the object");
+    return false;
+  }
+
+  // wait for object to settle
+  ros::Duration(1.0).sleep();
+
+  // check stage sanity of retreat and home
+  if (!retreatAndHome()) {
+    removeObject(object_name_);
+    return false;
+  }
+
+  if (!tryTask()) {
+    removeObject(object_name_);
+    ROS_ERROR_STREAM("Arm cannot retreat and home");
     return false;
   }
 

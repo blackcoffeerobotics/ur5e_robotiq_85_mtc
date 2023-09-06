@@ -8,8 +8,8 @@ object_name: coke_can
 planning_scene_objects:
   - name: coke_can
     link_state: coke_can::link
-    dimensions: [0.159, 0.035]
-    origin_compensation: [0., 0., 0.]
+    dimensions: [0.16, 0.035]
+    origin_compensation: [0., 0., 0.001]
 
   - name: table
     link_state: table::link
@@ -18,6 +18,10 @@ planning_scene_objects:
 
 # Place offset
 place_offset: [0.0, 0.0, 0.0]
+
+# Orientation RPY constraint
+orientation_constraint_name: upright_constraint
+orientation_rpy_tolerances: [deg(30), deg(360), deg(30)]
 
 # Offset from the center
 object_center_offset: 0.0
@@ -36,7 +40,7 @@ lift_axis: -y
 # Valid distance range when dropping an object
 drop_object_min_dist: 0.05
 drop_object_max_dist: 0.4
-drop_axis: -y
+drop_axis: +y
 
 # Retreat after place
 retreat_object_min_dist: 0.05

@@ -37,50 +37,50 @@ void MTCLibrary::loadParameters() {
   std::string param_ns = "mtc/";
   std::size_t errors = 0;
 
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "max_solutions", max_solutions_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "scaling_factor", scaling_factor_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "planning_timeout", planning_timeout_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "planning_group", planning_group_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "max_solutions", max_solutions_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "scaling_factor", scaling_factor_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "planning_timeout", planning_timeout_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "planning_group", planning_group_);
 
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "arm_group_name", arm_group_name_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "hand_group_name", hand_group_name_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "eef_name", eef_name_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "hand_open_pose", hand_open_pose_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "hand_close_pose", hand_close_pose_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "arm_home_pose", arm_home_pose_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "arm_group_name", arm_group_name_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "hand_group_name", hand_group_name_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "eef_name", eef_name_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "hand_open_pose", hand_open_pose_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "hand_close_pose", hand_close_pose_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "arm_home_pose", arm_home_pose_);
 
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "grasp_frame_transform", grasp_frame_transform_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "grasp_frame_transform", grasp_frame_transform_);
 
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "fixed_constraint_path", fixed_constraint_path_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "free_constraint_path", free_constraint_path_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "fixed_constraint_path", fixed_constraint_path_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "free_constraint_path", free_constraint_path_);
 
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "gripper_cmd_topic", gripper_cmd_topic_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "gripper_touch_links", gripper_touch_links_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "gripper_open_position", gripper_open_position_);
-  errors += !rosparam_shortcuts::get(
-    "", pnh, param_ns + "gripper_closed_position", gripper_closed_position_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "gripper_cmd_topic", gripper_cmd_topic_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "gripper_touch_links", gripper_touch_links_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "gripper_open_position", gripper_open_position_);
+  errors += !rosparam_shortcuts::get("", pnh, param_ns +
+    "gripper_closed_position", gripper_closed_position_);
 
   rosparam_shortcuts::shutdownIfError("", errors);
 }
 
 void MTCLibrary::initializePlannersAndStages() {
-  // initialize planners
+  // Planners
   sampling_planner_ =
     std::make_shared<moveit::task_constructor::solvers::PipelinePlanner>();
   sampling_planner_->setProperty(
@@ -96,6 +96,7 @@ void MTCLibrary::initializePlannersAndStages() {
   cartesian_planner_->setMaxAccelerationScalingFactor(scaling_factor_);
   cartesian_planner_->setStepSize(.01);
 
+  // Stages
   current_state_stage_ =
     std::make_unique<moveit::task_constructor::stages::CurrentState>(
       "current state stage");
@@ -104,15 +105,34 @@ void MTCLibrary::initializePlannersAndStages() {
     std::make_unique<moveit::task_constructor::stages::PredicateFilter>(
       "applicability filter stage", std::move(current_state_stage_));
 
+  // MoveTo Stages
+
   open_hand_stage_ =
     std::make_unique<moveit::task_constructor::stages::MoveTo>(
       "open hand stage", sampling_planner_);
   open_hand_stage_->setGroup(hand_group_name_);
   open_hand_stage_->setGoal(hand_open_pose_);
 
+  move_to_home_stage_ =
+    std::make_unique<moveit::task_constructor::stages::MoveTo>(
+      "move to home stage", sampling_planner_);
+
+  move_to_home_stage_->setGroup(arm_group_name_);
+  move_to_home_stage_->setGoal(arm_home_pose_);
+
+  // Modify Planning Scene Stages
+
   allow_hand_object_collision_stage_ =
     std::make_unique<moveit::task_constructor::stages::ModifyPlanningScene>(
       "allow hand object collision stage");
+  forbid_hand_object_collision_stage_ =
+    std::make_unique<moveit::task_constructor::stages::ModifyPlanningScene>(
+      "forbid hand object collision stage");
+  detach_object_stage_ =
+    std::make_unique<moveit::task_constructor::stages::ModifyPlanningScene>(
+      "detach object stage");
+
+  // Connect Stages
 
   connect_stage_for_custom_grasp_ =
     std::make_unique<moveit::task_constructor::stages::Connect>(
@@ -131,14 +151,15 @@ void MTCLibrary::initializePlannersAndStages() {
   connect_stage_for_grasp_->properties().configureInitFrom(
       moveit::task_constructor::Stage::PARENT);
 
-  serial_container_ =
-      std::make_unique<moveit::task_constructor::SerialContainer>(
-        "serial container for picking");
-  task_->properties().exposeTo(serial_container_->properties(),
-    { "eef", "hand", "group", "ik_frame" });
-  serial_container_->properties().configureInitFrom(
-    moveit::task_constructor::Stage::PARENT,
-      { "eef", "hand", "group", "ik_frame" });
+  connect_stage_for_place_ =
+    std::make_unique<moveit::task_constructor::stages::Connect>(
+      "connect to place",
+        moveit::task_constructor::stages::Connect::GroupPlannerVector{
+          { arm_group_name_, sampling_planner_ } });
+  connect_stage_for_place_->properties().configureInitFrom(
+      moveit::task_constructor::Stage::PARENT);
+
+  // Generate Pose Stages
 
   generate_custom_pose_stage_ =
     std::make_unique<moveit::task_constructor::stages::GenerateCustomPose>(
@@ -155,12 +176,29 @@ void MTCLibrary::initializePlannersAndStages() {
   generate_grasp_pose_stage_->setPreGraspPose(hand_open_pose_);
   generate_grasp_pose_stage_->setAngleDelta(M_PI / 12);
 
+  generate_place_pose_stage_ =
+    std::make_unique<moveit::task_constructor::stages::GeneratePlacePose>(
+      "generate place pose");
+  generate_place_pose_stage_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT, { "ik_frame" });
+  generate_place_pose_stage_->properties().set("marker_ns", "place_pose");
+
+  // MoveRelative Stages
+
   approach_object_stage_ =
     std::make_unique<moveit::task_constructor::stages::MoveRelative>(
       "approach object", cartesian_planner_);
   approach_object_stage_->properties().set("marker_ns", "approach_object");
   approach_object_stage_->properties().set("link", hand_frame_);
   approach_object_stage_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT, { "group" });
+
+  retreat_object_stage_ =
+    std::make_unique<moveit::task_constructor::stages::MoveRelative>(
+      "retreat object", cartesian_planner_);
+  retreat_object_stage_->properties().set("marker_ns", "retreat_object");
+  retreat_object_stage_->properties().set("link", hand_frame_);
+  retreat_object_stage_->properties().configureInitFrom(
     moveit::task_constructor::Stage::PARENT, { "group" });
 
   lift_object_stage_ =
@@ -170,6 +208,35 @@ void MTCLibrary::initializePlannersAndStages() {
   lift_object_stage_->properties().set("link", hand_frame_);
   lift_object_stage_->properties().configureInitFrom(
     moveit::task_constructor::Stage::PARENT, { "group" });
+
+  drop_object_stage_ =
+    std::make_unique<moveit::task_constructor::stages::MoveRelative>(
+      "drop object", cartesian_planner_);
+  drop_object_stage_->properties().set("marker_ns", "drop_object");
+  drop_object_stage_->properties().set("link", hand_frame_);
+  drop_object_stage_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT, { "group" });
+
+  // Containers
+  serial_container_for_pick_ =
+      std::make_unique<moveit::task_constructor::SerialContainer>(
+        "serial container for picking");
+  task_->properties().exposeTo(serial_container_for_pick_->properties(),
+    { "eef", "hand", "group", "ik_frame" });
+  serial_container_for_pick_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT,
+      { "eef", "hand", "group", "ik_frame" });
+
+  serial_container_for_place_ =
+      std::make_unique<moveit::task_constructor::SerialContainer>(
+        "serial container for placing");
+  task_->properties().exposeTo(serial_container_for_place_->properties(),
+    { "eef", "hand", "group" });
+  serial_container_for_place_->properties().configureInitFrom(
+    moveit::task_constructor::Stage::PARENT,
+      { "eef", "hand", "group" });
+
+
 }
 
 

@@ -117,28 +117,49 @@ class MTCLibrary {
     current_state_stage_;
   std::unique_ptr<moveit::task_constructor::stages::PredicateFilter>
     applicability_filter_stage_;
+
   std::unique_ptr<moveit::task_constructor::stages::MoveTo>
     open_hand_stage_;
+  std::unique_ptr<moveit::task_constructor::stages::MoveTo>
+    move_to_home_stage_;
+
   std::unique_ptr<moveit::task_constructor::stages::ModifyPlanningScene>
     allow_hand_object_collision_stage_;
+  std::unique_ptr<moveit::task_constructor::stages::ModifyPlanningScene>
+    forbid_hand_object_collision_stage_;
+  std::unique_ptr<moveit::task_constructor::stages::ModifyPlanningScene>
+    detach_object_stage_;
+
   std::unique_ptr<moveit::task_constructor::stages::Connect>
     connect_stage_for_grasp_;
   std::unique_ptr<moveit::task_constructor::stages::Connect>
     connect_stage_for_custom_grasp_;
+  std::unique_ptr<moveit::task_constructor::stages::Connect>
+    connect_stage_for_place_;
+
   std::unique_ptr<moveit::task_constructor::stages::GenerateCustomPose>
     generate_custom_pose_stage_;
   std::unique_ptr<moveit::task_constructor::stages::GenerateGraspPose>
     generate_grasp_pose_stage_;
+  std::unique_ptr<moveit::task_constructor::stages::GeneratePlacePose>
+    generate_place_pose_stage_;
 
   std::unique_ptr<moveit::task_constructor::stages::MoveRelative>
     approach_object_stage_;
   std::unique_ptr<moveit::task_constructor::stages::MoveRelative>
+    retreat_object_stage_;
+
+  std::unique_ptr<moveit::task_constructor::stages::MoveRelative>
     lift_object_stage_;
+  std::unique_ptr<moveit::task_constructor::stages::MoveRelative>
+    drop_object_stage_;
 
   // Misc
   moveit::task_constructor::Stage* current_state_ptr_;
   std::unique_ptr<moveit::task_constructor::SerialContainer>
-    serial_container_;
+    serial_container_for_pick_;
+  std::unique_ptr<moveit::task_constructor::SerialContainer>
+    serial_container_for_place_;
 
 
   // Functions
