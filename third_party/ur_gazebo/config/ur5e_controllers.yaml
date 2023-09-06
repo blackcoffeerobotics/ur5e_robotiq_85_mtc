@@ -21,12 +21,12 @@ eff_joint_traj_controller:
   constraints:
     goal_time: 0.6
     stopped_velocity_tolerance: 0.0
-    shoulder_pan_joint: {trajectory: 0.1, goal: 0.1}
-    shoulder_lift_joint: {trajectory: 0.1, goal: 0.1}
-    elbow_joint: {trajectory: 0.1, goal: 0.1}
-    wrist_1_joint: {trajectory: 0.1, goal: 0.1}
-    wrist_2_joint: {trajectory: 0.1, goal: 0.1}
-    wrist_3_joint: {trajectory: 0.1, goal: 0.1}
+    shoulder_pan_joint: {trajectory: 0.2, goal: 0.2}
+    shoulder_lift_joint: {trajectory: 0.2, goal: 0.2}
+    elbow_joint: {trajectory: 0.2, goal: 0.2}
+    wrist_1_joint: {trajectory: 0.2, goal: 0.2}
+    wrist_2_joint: {trajectory: 0.2, goal: 0.2}
+    wrist_3_joint: {trajectory: 0.2, goal: 0.2}
   stop_trajectory_duration: 0.5
   state_publish_rate: *loop_hz
   action_monitor_rate: 10

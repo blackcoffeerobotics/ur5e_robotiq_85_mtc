@@ -13,8 +13,6 @@ PickAndPlace::PickAndPlace(const std::string& task_name,
           object_pose_(object_pose), place_pose_(place_pose) {
   // Load Parameters
   loadParameters();
-  // load Constraints
-  loadConstraints();
 }
 
 void PickAndPlace::loadParameters() {
@@ -28,8 +26,6 @@ void PickAndPlace::loadParameters() {
 
   errors += !rosparam_shortcuts::get("", pnh, param_ns +
     "orientation_constraint_name", orientation_constraint_name_);
-  errors += !rosparam_shortcuts::get("", pnh, param_ns +
-    "orientation_rpy_tolerances", orientation_rpy_tolerances_);
 
   errors += !rosparam_shortcuts::get("", pnh, param_ns +
     "object_center_offset", object_center_offset_);
@@ -66,28 +62,6 @@ void PickAndPlace::loadParameters() {
 
   rosparam_shortcuts::shutdownIfError("", errors);
 }
-
-void PickAndPlace::loadConstraints() {
-  // load constraints
-  upright_constraint_.name = orientation_constraint_name_;
-  upright_constraint_.orientation_constraints.resize(1);
-  upright_constraint_.orientation_constraints[
-    0].link_name = hand_frame_;
-  upright_constraint_.orientation_constraints[
-    0].header.frame_id = planning_frame_;
-  upright_constraint_.orientation_constraints[
-    0].absolute_x_axis_tolerance = orientation_rpy_tolerances_[0];
-  upright_constraint_.orientation_constraints[
-    0].absolute_y_axis_tolerance = orientation_rpy_tolerances_[1];
-  upright_constraint_.orientation_constraints[
-    0].absolute_z_axis_tolerance = orientation_rpy_tolerances_[2];
-  upright_constraint_.orientation_constraints[
-    0].parameterization =
-    moveit_msgs::OrientationConstraint::ROTATION_VECTOR;
-  upright_constraint_.orientation_constraints[
-    0].weight = 1.0;
-}
-
 
 bool PickAndPlace::checkTargetPose() {
   // Task 0 - check target pose
@@ -271,10 +245,9 @@ bool PickAndPlace::liftAndPlaceObject() {
 
   // Connect Stage - Place
   {
-    upright_constraint_.orientation_constraints[0].orientation =
-      move_group_->getCurrentPose().pose.orientation;
-
-    connect_stage_for_place_->setPathConstraints(upright_constraint_);
+    moveit_msgs::Constraints upright_constraint;
+    upright_constraint.name = orientation_constraint_name_;
+    connect_stage_for_place_->setPathConstraints(upright_constraint);
     task_->add(std::move(connect_stage_for_place_));
   }
 

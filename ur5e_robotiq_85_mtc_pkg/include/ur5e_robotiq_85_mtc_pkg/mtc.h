@@ -74,6 +74,7 @@ class MTCLibrary {
 
   moveit::planning_interface::MoveGroupInterfacePtr move_group_;
 
+  std::string package_path_;
   std::string task_name_;
   std::string planning_frame_, hand_frame_;
 
@@ -99,9 +100,6 @@ class MTCLibrary {
   std::string arm_home_pose_;
 
   Eigen::Isometry3d grasp_frame_transform_;
-
-  std::string fixed_constraint_path_;
-  std::string free_constraint_path_;
 
   std::string gripper_cmd_topic_;
   double gripper_open_position_;
@@ -174,7 +172,6 @@ class MTCLibrary {
 
   void openGripperAction();
   void closeGripperAction();
-  void setConstraints(std::string constraint_type);
   void modifyGripperTransform(std::string axis_string, double offset);
   geometry_msgs::Vector3Stamped getVectorDirection(std::string axis_string);
 

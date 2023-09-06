@@ -76,6 +76,7 @@
 		<param name="max_sampling_attempts" value="$(arg max_sampling_attempts)" />
     <param name="capabilities" value="$(arg capabilities)"/>
     <param name="disable_capabilities" value="$(arg disable_capabilities)"/>
+		<param name="constraint_approximations_path" value="$(find ur5e_robotiq_85_mtc_pkg)/config/constraints/upright_constraint_db" />
 
 
     <!-- Publish the planning scene of the physical robot so that rviz plugin can know actual robot -->

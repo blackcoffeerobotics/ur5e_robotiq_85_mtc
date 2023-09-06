@@ -10,6 +10,9 @@
 MTCLibrary::MTCLibrary(const ros::NodeHandle& nh) : nh_(nh) {
   loadParameters();
 
+  // set package path
+  package_path_ = ros::package::getPath("ur5e_robotiq_85_mtc_pkg") + "/";
+
   // initialize move_group
   move_group_ =
     std::make_shared<moveit::planning_interface::MoveGroupInterface>(
@@ -61,11 +64,6 @@ void MTCLibrary::loadParameters() {
 
   errors += !rosparam_shortcuts::get("", pnh, param_ns +
     "grasp_frame_transform", grasp_frame_transform_);
-
-  errors += !rosparam_shortcuts::get("", pnh, param_ns +
-    "fixed_constraint_path", fixed_constraint_path_);
-  errors += !rosparam_shortcuts::get("", pnh, param_ns +
-    "free_constraint_path", free_constraint_path_);
 
   errors += !rosparam_shortcuts::get("", pnh, param_ns +
     "gripper_cmd_topic", gripper_cmd_topic_);
@@ -235,8 +233,6 @@ void MTCLibrary::initializePlannersAndStages() {
   serial_container_for_place_->properties().configureInitFrom(
     moveit::task_constructor::Stage::PARENT,
       { "eef", "hand", "group" });
-
-
 }
 
 
@@ -320,19 +316,6 @@ bool MTCLibrary::initTask(std::string task_name) {
     return false;
   }
   return true;
-}
-
-void MTCLibrary::setConstraints(std::string constraint_type) {
-  // set constraints
-  if (constraint_type == "fixed") {
-    ros::param::set("move_group/constraint_approximations_path",
-      fixed_constraint_path_);
-  } else if (constraint_type == "free") {
-    ros::param::set("move_group/constraint_approximations_path",
-      free_constraint_path_);
-  } else {
-    ROS_ERROR_STREAM("Constraint type not supported");
-  }
 }
 
 std::string MTCLibrary::getPlanningFrame() {

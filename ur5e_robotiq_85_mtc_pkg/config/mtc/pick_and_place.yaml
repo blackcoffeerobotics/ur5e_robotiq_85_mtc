@@ -21,7 +21,6 @@ place_offset: [0.0, 0.0, 0.0]
 
 # Orientation RPY constraint
 orientation_constraint_name: upright_constraint
-orientation_rpy_tolerances: [deg(30), deg(360), deg(30)]
 
 # Offset from the center
 object_center_offset: 0.0

@@ -3,7 +3,7 @@ constraints:
 - type: orientation
   frame_id: world
   link_name: tool0
-  orientation: [deg(90), 0, deg(90)]
-  tolerances: [0.4, deg(360), 0.4]
+  orientation: [deg(-90), deg(0), deg(-90)]
+  tolerances: [deg(30), deg(360), deg(30)]
   parameterization: 1
   weight: 1.0
