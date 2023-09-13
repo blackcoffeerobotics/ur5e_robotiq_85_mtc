@@ -17,7 +17,7 @@ planning_scene_objects:
     origin_compensation: [0., 0., 1.0]
 
 # Place offset
-place_offset: [0.1, 0.1, 0.0]
+place_offset: [0.0, 0.6, 0.0]
 
 # Orientation RPY constraint
 orientation_constraint_name: upright_constraint
@@ -27,7 +27,7 @@ object_center_offset: 0.0
 object_center_offset_axis: -y
 
 # Approach object range offsets
-approach_object_min_dist: 0.05
+approach_object_min_dist: 0.12
 approach_object_max_dist: 0.4
 approach_axis: +z
 

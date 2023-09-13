@@ -119,6 +119,8 @@ class MTCLibrary {
   std::unique_ptr<moveit::task_constructor::stages::MoveTo>
     open_hand_stage_;
   std::unique_ptr<moveit::task_constructor::stages::MoveTo>
+    close_hand_stage_;
+  std::unique_ptr<moveit::task_constructor::stages::MoveTo>
     move_to_home_stage_;
 
   std::unique_ptr<moveit::task_constructor::stages::ModifyPlanningScene>
@@ -162,30 +164,34 @@ class MTCLibrary {
 
   // Functions
   explicit MTCLibrary(const ros::NodeHandle& nh);
-
-  bool expectAttached(const moveit::task_constructor::SolutionBase& s,
-    std::string& comment, std::string object, bool state);
-  bool taskPlan(bool oneshot);
-  bool taskExecute();
-  bool tryTask(bool execute = true, bool oneshot = false);
-  virtual bool executePipeline();
+  virtual void loadParameters();
+  void initializePlannersAndStages();
 
   void openGripperAction();
   void closeGripperAction();
   void modifyGripperTransform(std::string axis_string, double offset);
+
   geometry_msgs::Vector3Stamped getVectorDirection(std::string axis_string);
 
-  virtual void loadParameters();
-  void initializePlannersAndStages();
   void resetTask(std::string task_name);
   bool initTask(std::string task_name);
 
   std::string getPlanningFrame();
+  double deg2rad(double degrees);
 
   void spawnObject(
     std::string object_name, geometry_msgs::Pose object_pose,
       std::vector<double> object_dimensions, std::string reference_frame);
   void removeObject(std::string object_name);
+
+  bool expectAttached(const moveit::task_constructor::SolutionBase& s,
+    std::string& comment, std::string object, bool state);
+
+  bool taskPlan(bool oneshot);
+  bool taskExecute();
+  bool tryTask(bool execute = true, bool oneshot = false);
+
+  virtual bool executePipeline();
 };
 
 #endif  // MTC_H_

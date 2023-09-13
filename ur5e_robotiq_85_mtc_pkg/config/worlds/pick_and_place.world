@@ -5,7 +5,7 @@
 		<!-- Setup camera initial pose -->
     <gui>
 			<camera name="gzclient_camera">
-				<pose>1.53 0 2.25 0 0.64 -3.1414</pose>
+				<pose>3.64 0 3.36 0 0.57 3.1414</pose>
 			</camera>
     </gui>
 
@@ -24,20 +24,20 @@
 		<!-- Add table -->
 		<include>
 			<uri>model://table</uri>
-			<pose>0.65 -0.3 0 0 0 0</pose>
+			<pose>0.33 0.0 0.0 0 0 1.5707</pose>
 		</include>
 
 		<!-- Add beer can -->
 		<include>
 			<uri>model://beer</uri>
-			<pose>0.7 -0.25 1.1 0 0 0</pose>
+			<pose>0.5 -0.3 1.0 0 0 0</pose>
 		</include>
 
 		<!-- keep barebones scene -->
     <scene>
-      <shadows>0</shadows>
+      <!-- <shadows>0</shadows>
 			<grid>false</grid>
-			<origin_visual>false</origin_visual>
+			<origin_visual>false</origin_visual> -->
     </scene>
 
   </world>

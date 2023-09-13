@@ -11,7 +11,9 @@
 #include <ur5e_robotiq_85_mtc_pkg/pick_and_place.h>
 
 
-
+/**
+ * Function to populate the planning scene objects map
+*/
 std::map<std::string,
   std::tuple<std::string, std::vector<double>, std::vector<double>>>
   populatePlanningSceneObjects(XmlRpc::XmlRpcValue planning_scene_objects) {

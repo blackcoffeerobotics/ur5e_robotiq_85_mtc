@@ -10,6 +10,8 @@
 	<arg name="arm_pitch" default="0.0"/>
 	<arg name="arm_yaw" default="0.0"/>
 
+	<arg name="start_rviz" default="false"/>
+
 	<arg name="gazebo_world" default="pick_and_place.world"/>
 
 	<arg name="rviz_config" default="$(find ur5e_robotiq_85_mtc_pkg)/config/rviz/ur5e_robotiq_85_mtc.rviz"/>
@@ -32,7 +34,7 @@
 	</include>
 
 	<!-- Launch MoveIt! RViz -->
-	<include file="$(find ur5e_robotiq_85_moveit_config)/launch/moveit_rviz.launch">
+	<include file="$(find ur5e_robotiq_85_moveit_config)/launch/moveit_rviz.launch" if="$(arg start_rviz)">
 		<arg name="config" value="$(arg rviz_config)"/>
 	</include>
 

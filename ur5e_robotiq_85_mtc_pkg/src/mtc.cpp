@@ -6,7 +6,9 @@
 
 #include <ur5e_robotiq_85_mtc_pkg/mtc.h>
 
-
+/**
+ * Constructor
+ */
 MTCLibrary::MTCLibrary(const ros::NodeHandle& nh) : nh_(nh) {
   loadParameters();
 
@@ -31,6 +33,9 @@ MTCLibrary::MTCLibrary(const ros::NodeHandle& nh) : nh_(nh) {
   hand_frame_ = move_group_->getEndEffectorLink();
 }
 
+/**
+ * Function to load parameters from the parameter server - to be overridden in derived class
+ */
 void MTCLibrary::loadParameters() {
   // load Parameters
   ROS_INFO_STREAM(bash_colours.at("green") +
@@ -77,6 +82,9 @@ void MTCLibrary::loadParameters() {
   rosparam_shortcuts::shutdownIfError("", errors);
 }
 
+/**
+ * Function to initialize all the planners and stages
+ */
 void MTCLibrary::initializePlannersAndStages() {
   // Planners
   sampling_planner_ =
@@ -110,6 +118,12 @@ void MTCLibrary::initializePlannersAndStages() {
       "open hand stage", sampling_planner_);
   open_hand_stage_->setGroup(hand_group_name_);
   open_hand_stage_->setGoal(hand_open_pose_);
+
+  close_hand_stage_ =
+    std::make_unique<moveit::task_constructor::stages::MoveTo>(
+      "close hand stage", sampling_planner_);
+  close_hand_stage_->setGroup(hand_group_name_);
+  close_hand_stage_->setGoal(hand_close_pose_);
 
   move_to_home_stage_ =
     std::make_unique<moveit::task_constructor::stages::MoveTo>(
@@ -172,7 +186,7 @@ void MTCLibrary::initializePlannersAndStages() {
     moveit::task_constructor::Stage::PARENT);
   generate_grasp_pose_stage_->properties().set("marker_ns", "grasp_pose");
   generate_grasp_pose_stage_->setPreGraspPose(hand_open_pose_);
-  generate_grasp_pose_stage_->setAngleDelta(M_PI / 12);
+  generate_grasp_pose_stage_->setAngleDelta(deg2rad(15));
 
   generate_place_pose_stage_ =
     std::make_unique<moveit::task_constructor::stages::GeneratePlacePose>(
@@ -235,7 +249,37 @@ void MTCLibrary::initializePlannersAndStages() {
       { "eef", "hand", "group" });
 }
 
+/**
+ * Function to open the gripper
+ */
+void MTCLibrary::openGripperAction() {
+  // open gripper
+  ROS_INFO_STREAM(bash_colours.at("green") +
+    "Opening Gripper" + bash_colours.at("reset"));
+  control_msgs::GripperCommandActionGoal gripper_msg;
+  gripper_msg.goal.command.position = gripper_open_position_;
+  gripper_msg.goal.command.max_effort = 100;
+  gripper_pub_.publish(gripper_msg);
+  ros::Duration(1.0).sleep();
+}
 
+/**
+ * Function to close the gripper
+ */
+void MTCLibrary::closeGripperAction() {
+  // close gripper
+  ROS_INFO_STREAM(bash_colours.at("green") +
+    "Closing Gripper" + bash_colours.at("reset"));
+  control_msgs::GripperCommandActionGoal gripper_msg;
+  gripper_msg.goal.command.position = gripper_closed_position_;
+  gripper_msg.goal.command.max_effort = 100;
+  gripper_pub_.publish(gripper_msg);
+  ros::Duration(1.0).sleep();
+}
+
+/**
+ * Function to change the default gripper frame for planning.
+ */
 void MTCLibrary::modifyGripperTransform(
   std::string axis_string, double offset) {
   // get direction and axis from string
@@ -257,6 +301,9 @@ void MTCLibrary::modifyGripperTransform(
   }
 }
 
+/**
+ * Function to get the vector direction from a string. (e.g. +x, -y, +z)
+ */
 geometry_msgs::Vector3Stamped MTCLibrary::getVectorDirection(
   std::string axis_string) {
   // modify direction based on input string
@@ -286,6 +333,9 @@ geometry_msgs::Vector3Stamped MTCLibrary::getVectorDirection(
   return vec;
 }
 
+/**
+ * Function to reset the task pointer
+ */
 void MTCLibrary::resetTask(std::string task_name) {
   // reset the task variable
   task_.reset();
@@ -305,6 +355,9 @@ void MTCLibrary::resetTask(std::string task_name) {
   initializePlannersAndStages();
 }
 
+/**
+ * Function to initialize the task
+ */
 bool MTCLibrary::initTask(std::string task_name) {
   // initialize the task after appending the stages
   // Check for failure
@@ -318,33 +371,24 @@ bool MTCLibrary::initTask(std::string task_name) {
   return true;
 }
 
+/**
+ * Function to get the planning frame
+ */
 std::string MTCLibrary::getPlanningFrame() {
   // get planning frame
   return planning_frame_;
 }
 
-void MTCLibrary::openGripperAction() {
-  // open gripper
-  ROS_INFO_STREAM(bash_colours.at("green") +
-    "Opening Gripper" + bash_colours.at("reset"));
-  control_msgs::GripperCommandActionGoal gripper_msg;
-  gripper_msg.goal.command.position = gripper_open_position_;
-  gripper_msg.goal.command.max_effort = 100;
-  gripper_pub_.publish(gripper_msg);
-  ros::Duration(1.0).sleep();
+/**
+ * Function to convert degrees to radians
+ */
+double MTCLibrary::deg2rad(double degrees) {
+  return degrees * M_PI / 180;
 }
 
-void MTCLibrary::closeGripperAction() {
-  // close gripper
-  ROS_INFO_STREAM(bash_colours.at("green") +
-    "Closing Gripper" + bash_colours.at("reset"));
-  control_msgs::GripperCommandActionGoal gripper_msg;
-  gripper_msg.goal.command.position = gripper_closed_position_;
-  gripper_msg.goal.command.max_effort = 100;
-  gripper_pub_.publish(gripper_msg);
-  ros::Duration(1.0).sleep();
-}
-
+/**
+ * Function to spawn objects in the planning scene
+ */
 void MTCLibrary::spawnObject(
   std::string object_name, geometry_msgs::Pose object_pose,
     std::vector<double> object_dimensions, std::string reference_frame) {
@@ -377,8 +421,11 @@ void MTCLibrary::spawnObject(
   ros::Duration(0.1).sleep();
 }
 
+/**
+ * Function to remove a specific object from the planning scene
+ */
 void MTCLibrary::removeObject(std::string object_name) {
-  // remove objects from the planning scene
+  // remove object from the planning scene
   ROS_INFO_STREAM(bash_colours.at("green") +
     "Removing Scene Objects" + bash_colours.at("reset"));
   moveit_msgs::PlanningScene planning_scene;
@@ -390,6 +437,9 @@ void MTCLibrary::removeObject(std::string object_name) {
   planning_scene_pub_.publish(planning_scene);
 }
 
+/**
+ * Function to check if an object is attached to the gripper
+ */
 bool MTCLibrary::expectAttached(
   const moveit::task_constructor::SolutionBase& s,
     std::string& comment, std::string object, bool state) {
@@ -401,6 +451,9 @@ bool MTCLibrary::expectAttached(
   return !state;
 }
 
+/**
+ * Function to plan the task
+ */
 bool MTCLibrary::taskPlan(bool oneshot) {
   ROS_INFO_STREAM(bash_colours.at("green") +
     "Start searching for task solutions" + bash_colours.at("reset"));
@@ -412,6 +465,9 @@ bool MTCLibrary::taskPlan(bool oneshot) {
   }
 }
 
+/**
+ * Function to execute the task
+ */
 bool MTCLibrary::taskExecute() {
   ROS_INFO_STREAM(bash_colours.at("green") +
     "Executing solution trajectory" + bash_colours.at("reset"));
@@ -430,6 +486,9 @@ bool MTCLibrary::taskExecute() {
   return true;
 }
 
+/**
+ * Function to try the task based on execution and oneshot parameters
+ */
 bool MTCLibrary::tryTask(bool execute, bool oneshot) {
   time_t start = time(NULL);
 
@@ -459,6 +518,9 @@ bool MTCLibrary::tryTask(bool execute, bool oneshot) {
   return false;
 }
 
+/**
+ * Function to execute the pipeline - to be overridden in derived class
+ */
 bool MTCLibrary::executePipeline() {
   return false;
 }

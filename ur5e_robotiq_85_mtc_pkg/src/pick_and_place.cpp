@@ -6,6 +6,9 @@
 
 #include <ur5e_robotiq_85_mtc_pkg/pick_and_place.h>
 
+/**
+ * Constructor
+ */
 PickAndPlace::PickAndPlace(const std::string& task_name,
     const ros::NodeHandle& nh, std::string object_name,
       geometry_msgs::Pose object_pose, geometry_msgs::Pose place_pose) :
@@ -15,6 +18,9 @@ PickAndPlace::PickAndPlace(const std::string& task_name,
   loadParameters();
 }
 
+/**
+ * Function to load parameters from the parameter server - overridden from base class.
+ */
 void PickAndPlace::loadParameters() {
   // load Parameters
   ROS_INFO_STREAM(bash_colours.at("green") +
@@ -63,6 +69,9 @@ void PickAndPlace::loadParameters() {
   rosparam_shortcuts::shutdownIfError("", errors);
 }
 
+/**
+ * Function to check if the target pose is feasible
+ */
 bool PickAndPlace::checkTargetPose() {
   // Task 0 - check target pose
   ROS_INFO_STREAM(bash_colours.at("green") +
@@ -70,9 +79,6 @@ bool PickAndPlace::checkTargetPose() {
 
   // reset task
   resetTask(task_name_ + "_check_target_pose");
-
-  sampling_planner_->setProperty(
-    "goal_joint_tolerance", 1e-3);  // custom grasp requires greater tolerance
 
   // Applicability Stage
   current_state_ptr_ = nullptr;
@@ -134,6 +140,9 @@ bool PickAndPlace::checkTargetPose() {
   return initTask(task_name_ + "_check_target_pose");
 }
 
+/**
+ * Function to approach the object in a cartesian manner
+ */
 bool PickAndPlace::approachObject() {
   // Task 1 - approach object
   ROS_INFO_STREAM(bash_colours.at("green") +
@@ -201,11 +210,24 @@ bool PickAndPlace::approachObject() {
       modifyGripperTransform(
         object_center_offset_axis_, -object_center_offset_);
     }
+
+    // allow collision
+    {
+      allow_hand_object_collision_stage_->allowCollisions(
+        object_name_, task_->getRobotModel()->getJointModelGroup(
+          hand_group_name_)->getLinkModelNamesWithCollisionGeometry(), true);
+      serial_container_for_pick_->insert(
+        std::move(allow_hand_object_collision_stage_));
+    }
+
     task_->add(std::move(serial_container_for_pick_));
   }
   return initTask(task_name_ + "_approach_object");
 }
 
+/**
+ * Function to lift and place the object using constraints
+ */
 bool PickAndPlace::liftAndPlaceObject() {
   // Task 2 - lift object
   ROS_INFO_STREAM(bash_colours.at("green") +
@@ -225,14 +247,6 @@ bool PickAndPlace::liftAndPlaceObject() {
     task_->add(std::move(applicability_filter_stage_));
   }
 
-  // Allow Collision - Stage
-  {
-    allow_hand_object_collision_stage_->allowCollisions(
-      object_name_, task_->getRobotModel()->getJointModelGroup(
-        hand_group_name_)->getLinkModelNamesWithCollisionGeometry(), true);
-    task_->add(std::move(allow_hand_object_collision_stage_));
-  }
-
   // Lift Object Stage
   {
     lift_object_stage_->setMinMaxDistance(
@@ -247,6 +261,21 @@ bool PickAndPlace::liftAndPlaceObject() {
   {
     moveit_msgs::Constraints upright_constraint;
     upright_constraint.name = orientation_constraint_name_;
+    upright_constraint.orientation_constraints.resize(1);
+    upright_constraint.orientation_constraints.resize(1);
+
+    moveit_msgs::OrientationConstraint& oc =
+      upright_constraint.orientation_constraints[0];
+    oc.link_name = hand_frame_;
+    oc.header.frame_id = planning_frame_;
+    oc.absolute_x_axis_tolerance = deg2rad(30.0);
+    oc.absolute_y_axis_tolerance = deg2rad(360.0);
+    oc.absolute_z_axis_tolerance = deg2rad(30.0);
+    oc.parameterization =
+      moveit_msgs::OrientationConstraint::ROTATION_VECTOR;
+    oc.weight = 1.0;
+    oc.orientation = move_group_->getCurrentPose().pose.orientation;
+
     connect_stage_for_place_->setPathConstraints(upright_constraint);
     task_->add(std::move(connect_stage_for_place_));
   }
@@ -324,6 +353,9 @@ bool PickAndPlace::liftAndPlaceObject() {
   return initTask(task_name_ + "_lift_and_place_object");
 }
 
+/**
+ * Function to retreat and go to home
+ */
 bool PickAndPlace::retreatAndHome() {
   // Task 3 - retreat and home
   ROS_INFO_STREAM(bash_colours.at("green") +
@@ -361,7 +393,9 @@ bool PickAndPlace::retreatAndHome() {
   return initTask(task_name_ + "_retreat_and_home");
 }
 
-
+/**
+ * Function to execute the pipeline - overridden from base class.
+ */
 bool PickAndPlace::executePipeline() {
   // pick with an open grasp
   openGripperAction();
