@@ -11,7 +11,7 @@ Report security vulnerabilities by emailing the following address at:
 
     contact@blackcoffeerobotics.com
 
-Acknowledgement of your email would be done within 24 hours, and a more detailed response within 48 hours would be sent indicating the next steps in handling your report.
+Acknowledgement of your email would be done and a more detailed response would be sent indicating the next steps in handling your report.
 After the initial reply to your report, you would be informed of the progress towards a fix and full announcement, and may ask for additional information or guidance.
 
 ## Disclosure Policy
