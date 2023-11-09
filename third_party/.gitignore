@@ -1,0 +1,6 @@
+setup.bash
+setup.sh
+setup.zsh
+.rosinstall
+moveit
+moveit_task_constructor

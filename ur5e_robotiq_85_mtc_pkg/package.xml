@@ -12,13 +12,13 @@
 	<build_depend>roscpp</build_depend>
 	<exec_depend>roscpp</exec_depend>
 
-	<depend>roboticsgroup_upatras_gazebo_plugins</depend>
-	<depend>robotiq_2f_85</depend>
-	<depend>ur_description</depend>
-	<depend>ur_gazebo</depend>
-	<depend>ur5e_robotiq_85_moveit_config</depend>
+	<exec_depend>roboticsgroup_upatras_gazebo_plugins</exec_depend>
+	<exec_depend>robotiq_2f_85</exec_depend>
+	<exec_depend>ur_description</exec_depend>
+	<exec_depend>ur_gazebo</exec_depend>
+	<exec_depend>ur5e_robotiq_85_moveit_config</exec_depend>
 
-  <depend>gazebo_ros</depend>
+  <exec_depend>gazebo_ros</exec_depend>
 
   <export>
     <gazebo_ros
